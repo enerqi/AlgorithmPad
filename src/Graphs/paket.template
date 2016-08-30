@@ -1,0 +1,25 @@
+type project
+title
+    Graphs
+owners
+    Enerqi
+authors 
+    Enerqi
+projectUrl
+    https://github.com/enerqi/Graphs
+iconUrl
+    https://raw.githubusercontent.com/enerqi/Graphs/master/docs/files/img/logo.png
+licenseUrl
+    https://github.com/enerqi/Graphs/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+tags
+    Graphs DataStructures
+summary
+    Graph Algorithms
+description
+    Description not set
+
+
