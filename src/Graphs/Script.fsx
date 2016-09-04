@@ -26,3 +26,22 @@ let dataLines = File.ReadLines(f);;
 // filter "empty" lines
 
 let header, edges = dataLines.[0], dataLines.[1..];;
+let verticesCount, edgesCount = header.Split() |> Array.map int;;
+
+let extractVertexPair (pairString: string) = 
+    match pairString.Split() with
+    | [|v1; v2|] -> (int v1, int v2)
+        // Todo: Improve error handling
+    | _ -> failwith "Failed to extract pair from vertex pair string: %s" pairString
+     
+type Thing = {
+    S: string
+}
+
+type Foo = { // foo is immutable,
+    A: int
+    AS: Thing array // array is the .net BCL resizable list (c++ vector). The ref is final but the data is mutable.
+}
+
+
+let ra = new ResizeArray<Object>() 
