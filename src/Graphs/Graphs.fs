@@ -1,12 +1,16 @@
 namespace Graphs
 
 open System
-open System.Collections.Generic // ResizeArray
+open System.Collections.Generic 
 open System.IO
 
 module Graphs = 
 
-    type VertexId = VId of int  
+    type VertexId = 
+        struct
+            val Id: int
+            new(id: int) = {Id = id}
+        end
 
     type Vertex = {    
         Id: VertexId
@@ -29,12 +33,11 @@ module Graphs =
     /// Take a pair string e.g. "1 2" and return a tuple of the VertexId values
     let extractVertexPair (pairString: string) = 
         match pairString.Split() with
-        | [|v1; v2|] -> (VId(int v1), VId(int v2))
+        | [|v1; v2|] -> (VertexId (int v1), VertexId (int v2))
         | _ -> failwith <| sprintf "Failed to extract pair from vertex pair string: %s" pairString
 
-    let vertexFromId graph v =
-        match v with 
-        | VId id -> graph.Vertices.[id]
+    let vertexFromId graph (v: VertexId) =
+        graph.Vertices.[v.Id]
 
     let verticesSeq graph = 
         Seq.ofArray graph.Vertices |> Seq.skip 1         
@@ -51,22 +54,21 @@ module Graphs =
     /// ## Parameters
     ///  - `file` - full (relative or absolute) string path to the file to open
     let readGraph filePath = 
-        let dataLines = File.ReadLines(filePath) |> Array.ofSeq
+        let dataLines = File.ReadLines(filePath) 
 
-            // head and rest of seq?
-        let header, edges = dataLines.[0], dataLines.[1..]
-        let verticesCount, edgesCount = extractHeader header
-        let edgeVertexPairs = edges |> Array.map extractVertexPair
+        let header, edges = Seq.take 1 dataLines, Seq.skip 1 dataLines
+        let verticesCount, edgesCount = extractHeader <| Seq.exactlyOne header
+        let edgeVertexPairs = edges |> Seq.map extractVertexPair
     
         // The entry at index 0 will be ignored. Keeping it saves on offset calculations.
         // 1-based indices. F# inclusive [x..y]
         let verts = [|for vIndex in [0..verticesCount] do
-                      yield { Id = VId(vIndex)
+                      yield { Id = VertexId vIndex;
                               Neighbours = new ResizeArray<VertexId>() } |]
             
-        for (VId v1, VId v2) in edgeVertexPairs do 
-            verts.[v1].Neighbours.Add((VId v2))
-            verts.[v2].Neighbours.Add((VId v1))
+        for (v1, v2) in edgeVertexPairs do 
+            verts.[v1.Id].Neighbours.Add(v2)
+            verts.[v2.Id].Neighbours.Add(v1)
 
         { VerticesCount = verticesCount; 
           EdgesCount = edgesCount;
