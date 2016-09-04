@@ -31,7 +31,13 @@ module Graphs =
         match pairString.Split() with
         | [|v1; v2|] -> (VId(int v1), VId(int v2))
         | _ -> failwith <| sprintf "Failed to extract pair from vertex pair string: %s" pairString
-     
+
+    let vertexFromId graph v =
+        match v with 
+        | VId id -> graph.Vertices.[id]
+
+    let verticesSeq graph = 
+        Seq.ofArray graph.Vertices |> Seq.skip 1         
 
     /// Parse a file and returns a Graph
     /// File format:
@@ -67,21 +73,35 @@ module Graphs =
           Vertices = verts }      
 
     let pathExists graph (v1: VertexId) (v2: VertexId) = 
-        // in the problem description the last line of the input file
-        // contains the v1 v2 pair
-        // explore graph, e.g. DFS - mark all visited - are v1 and v2 in visited set
         let visitedSet = new HashSet<VertexId>() 
-
+        
         let rec explore (v: VertexId) =             
-            visitedSet.Add(v) |> ignore
-            let vertexId = match v with | VId id -> id
-            let vertex = graph.Vertices.[vertexId]
+            visitedSet.Add(v) |> ignore            
+            let vertex = vertexFromId graph v
             for neighbour in vertex.Neighbours do 
                 if not (visitedSet.Contains(neighbour)) then 
                     explore neighbour // not tail recursive!
         
         explore v1
         visitedSet.Contains(v2)
+            
+    let connectedComponents graph =              
+        let visitedSet = new HashSet<VertexId>()
+        let mutable componentId = 0
+        let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
+        
+        let rec explore (v: VertexId) = 
+            visitedSet.Add(v) |> ignore
+            componentGroups.[componentId].Add(v)
+            let vertex = vertexFromId graph v
+            for neighbour in vertex.Neighbours do
+                if not (visitedSet.Contains(neighbour)) then 
+                    explore neighbour 
 
-    let connectedComponents graph = 
-        true
+        for v in verticesSeq graph do 
+            if not (visitedSet.Contains(v.Id)) then
+                componentGroups.Add(new ResizeArray<VertexId>())
+                explore v.Id
+                componentId <- componentId + 1
+
+        componentGroups
