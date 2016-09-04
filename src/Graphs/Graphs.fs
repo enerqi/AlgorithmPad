@@ -56,8 +56,8 @@ module Graphs =
     let readGraph filePath = 
         let dataLines = File.ReadLines(filePath) 
 
-        let header, edges = Seq.take 1 dataLines, Seq.skip 1 dataLines
-        let verticesCount, edgesCount = extractHeader <| Seq.exactlyOne header
+        let header, edges = Seq.head dataLines, Seq.tail dataLines
+        let verticesCount, edgesCount = extractHeader header
         let edgeVertexPairs = edges |> Seq.map extractVertexPair
     
         // The entry at index 0 will be ignored. Keeping it saves on offset calculations.
