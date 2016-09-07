@@ -28,11 +28,11 @@ open SourceLink
 
 // The name of the project
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
-let project = "Graphs"
+let project = "AlgorithmPad"
 
 // Short summary of the project
 // (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary = "Graph Algorithms"
+let summary = "Algorithms Scratchpad"
 
 // Longer description of the project
 // (used as a description for NuGet package; line breaks are automatically cleaned up)
@@ -45,7 +45,7 @@ let authors = [ "Enerqi" ]
 let tags = "Graphs DataStructures"
 
 // File system information
-let solutionFile  = "Graphs.sln"
+let solutionFile  = "AlgorithmPad.sln"
 
 // Pattern specifying assemblies to be tested using NUnit
 let testAssemblies = "tests/**/bin/Release/*Tests*.dll"

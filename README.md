@@ -1,6 +1,6 @@
-# Graphs
+# AlgorithmPad
 
-Scratchpad project for implementing algorithms on graphs. 
+Scratchpad project for implementing algorithms in F#. 
 
 Project skeleton from http://fsprojects.github.io/ProjectScaffold.
 
