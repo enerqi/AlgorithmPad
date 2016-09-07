@@ -18,9 +18,10 @@ module Graphs =
     }  
 
     type Graph = {
+        Vertices: Vertex array // mutable fixed sized .net type even though the ref is immutable
+        IsDirected: bool
         VerticesCount: int
         EdgesCount: int
-        Vertices: Vertex array // mutable fixed sized .net type even though the ref is immutable
     }
 
     /// Take a pair string e.g. "1 2" and return a tuple of the integer values
@@ -53,7 +54,7 @@ module Graphs =
     ///
     /// ## Parameters
     ///  - `file` - full (relative or absolute) string path to the file to open
-    let readGraph filePath = 
+    let readGraph filePath isDirected = 
         let dataLines = File.ReadLines(filePath) 
 
         let header, edges = Seq.head dataLines, Seq.tail dataLines
@@ -71,6 +72,7 @@ module Graphs =
             verts.[v2.Id].Neighbours.Add(v1)
 
         { VerticesCount = verticesCount; 
+          IsDirected = isDirected;
           EdgesCount = edgesCount;
           Vertices = verts }      
 
@@ -107,3 +109,30 @@ module Graphs =
                 componentId <- componentId + 1
 
         componentGroups
+
+    let reverseDirectedGraph graph = 
+        if not graph.IsDirected then
+            None
+        else 
+            Some(graph)
+
+    let isDAG directedGraph = 
+        // Is it a directed *acyclic* graph?
+        // - check if the graph has any strongly connected components with more than vertex
+        // 
+        // Note graphs with cycles cannot be linearly ordered
+        // Theorem: any DAG can be linearly ordered
+        // But...we need to find out if it is Acyclic.
+        //
+        // Another approach is:
+        // Depth First Traversal can be used to detect cycle in a Graph. DFS for a connected graph produces a tree. 
+        // There is a cycle in a graph only if there is a back edge present in the graph (self link or link to parent). 
+        if not directedGraph.IsDirected then 
+            false
+        else 
+            true
+
+    let topologicalOrdering dag = 
+        // source(s) at the start of the output, sink(s) at the end
+        []
+
