@@ -111,10 +111,21 @@ module Graphs =
         componentGroups
 
     let reverseDirectedGraph graph = 
-        if not graph.IsDirected then
+        if graph.IsDirected then
+            let reverseGraph = {graph with Vertices = 
+                                           [|for v in graph.Vertices do
+                                             yield {Id = v.Id; 
+                                                    Neighbours = new ResizeArray<VertexId>()}|]}
+            
+            for vertex in graph.Vertices do                                   
+                for neighbourVertexId in vertex.Neighbours do 
+                    if neighbourVertexId.Id < graph.VerticesCount then                                          
+                        reverseGraph.Vertices.[neighbourVertexId.Id].Neighbours.Add(vertex.Id)                                           
+            
+            Some(reverseGraph)
+        else
             None
-        else 
-            Some(graph)
+           
 
     let isDAG directedGraph = 
         // Is it a directed *acyclic* graph?
