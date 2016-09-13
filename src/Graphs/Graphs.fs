@@ -13,7 +13,7 @@ module Graphs =
         end
 
     type Vertex = {    
-        Id: VertexId
+        Identifier: VertexId
         Neighbours: ResizeArray<VertexId>
     }  
 
@@ -32,7 +32,7 @@ module Graphs =
             | _ -> failwith <| sprintf "Failed to extract header pair fom string: %s" header
   
     /// Take a pair string e.g. "1 2" and return a tuple of the VertexId values
-    let extractVertexPair (pairString: string) = 
+    let extractVertexIdPair (pairString: string) = 
         match pairString.Split() with
         | [|v1; v2|] -> (VertexId (int v1), VertexId (int v2))
         | _ -> failwith <| sprintf "Failed to extract pair from vertex pair string: %s" pairString
@@ -59,12 +59,12 @@ module Graphs =
 
         let header, edges = Seq.head dataLines, Seq.tail dataLines
         let verticesCount, edgesCount = extractHeader header
-        let edgeVertexPairs = edges |> Seq.map extractVertexPair
+        let edgeVertexPairs = edges |> Seq.map extractVertexIdPair
     
         // The entry at index 0 will be ignored. Keeping it saves on offset calculations.
         // 1-based indices. F# inclusive [x..y]
         let verts = [|for vIndex in [0..verticesCount] do
-                      yield { Id = VertexId vIndex;
+                      yield { Identifier = VertexId vIndex;
                               Neighbours = new ResizeArray<VertexId>() } |]
             
         for (v1, v2) in edgeVertexPairs do 
@@ -103,9 +103,9 @@ module Graphs =
                     explore neighbour 
 
         for v in verticesSeq graph do 
-            if not (visitedSet.Contains(v.Id)) then
+            if not (visitedSet.Contains(v.Identifier)) then
                 componentGroups.Add(new ResizeArray<VertexId>())
-                explore v.Id
+                explore v.Identifier
                 componentId <- componentId + 1
 
         componentGroups
@@ -114,34 +114,62 @@ module Graphs =
         if graph.IsDirected then
             let reverseGraph = {graph with Vertices = 
                                            [|for v in graph.Vertices do
-                                             yield {Id = v.Id; 
+                                             yield {Identifier = v.Identifier; 
                                                     Neighbours = new ResizeArray<VertexId>()}|]}
             
-            for vertex in graph.Vertices do                                   
+            for vertex in verticesSeq graph do                                   
                 for neighbourVertexId in vertex.Neighbours do 
-                    if neighbourVertexId.Id < graph.VerticesCount then                                          
-                        reverseGraph.Vertices.[neighbourVertexId.Id].Neighbours.Add(vertex.Id)                                           
+                    if neighbourVertexId.Id < graph.VerticesCount then // In case the graph has some invalid entries
+                        reverseGraph.Vertices.[neighbourVertexId.Id].Neighbours.Add(vertex.Identifier)
             
             Some(reverseGraph)
         else
             None
            
 
-    let isDAG directedGraph = 
+    let isDAG graph = 
         // Is it a directed *acyclic* graph?
-        // - check if the graph has any strongly connected components with more than vertex
-        // 
-        // Note graphs with cycles cannot be linearly ordered
-        // Theorem: any DAG can be linearly ordered
-        // But...we need to find out if it is Acyclic.
+        // - Check if the graph has any strongly connected components with more than vertex
+        //   This is best for finding all cycles in a graph, maybe overkill for finding if any cycles exist
         //
-        // Another approach is:
-        // Depth First Traversal can be used to detect cycle in a Graph. DFS for a connected graph produces a tree. 
+        // - Another approach is to detect any back edges in the DFS stack.
         // There is a cycle in a graph only if there is a back edge present in the graph (self link or link to parent). 
-        if not directedGraph.IsDirected then 
-            false
+        // This involves checking whether a new node exists in the current dfs stack.
+        // A simple scan of the stack is O(n) and doing this for each step in dfs is costly - O(n^2). O(|V|+|E|) for dfs component.
+        // hashset - NO, we have a fixed number of vertices so can use a bitset
+        // boolean array or bitset
+        // Clearing and setting bits as the recursion goes keeps the complexity at O(|V|+|E|)
+        //
+        // https://stackoverflow.com/questions/261573/best-algorithm-for-detecting-cycles-in-a-directed-graph
+        if graph.IsDirected then 
+            let visitedSet = new HashSet<VertexId>() // or make a BitArray
+            let dfsRecursionStackVertexIds = Array.create graph.VerticesCount false
+
+
+            let rec explore (vertexId: VertexId) =  // returns true if a back-edge is found                
+                            
+                if dfsRecursionStackVertexIds.[vertexId.Id] then
+                    // This is a back-edge pointing to vertex curretly being visited in the dfs recursion stack.
+                    true
+                else
+                    // Not visited before (and so definitely also not in the dfs recursion stack)
+                    visitedSet.Add(vertexId) |> ignore                
+                    dfsRecursionStackVertexIds.[vertexId.Id] <- true
+
+                    let vertex = vertexFromId graph vertexId
+                    for neighbourVertexId in vertex.Neighbours do
+                        if not (visitedSet.Contains(neighbourVertexId)) then 
+                            explore vertexId 
+                                                
+                    dfsRecursionStackVertexIds.[vertexId.Id] <- false                    
+                    false
+
+            for vertex in verticesSeq graph do
+                if not (visitedSet.Contains(vertex.Identifier)) then
+                    if explore vertex.Identifier then 
+                        true 
         else 
-            true
+            false
 
     let topologicalOrdering dag = 
         // source(s) at the start of the output, sink(s) at the end
