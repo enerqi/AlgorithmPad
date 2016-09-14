@@ -26,3 +26,5 @@ let g_maze = Graphs.readGraph maze_graph_file false
 Graphs.reverseDirectedGraph g_dag
 
 Graphs.isDAG g_dag
+
+Graphs.dfsPrePostOrderNumbers g_dag

@@ -235,3 +235,25 @@ module Graphs =
         // source(s) at the start of the output, sink(s) at the end
         []
 
+    let edges undirected_graph = 
+        [(0, 0)]
+        // Array.create undirected_graph.EdgesCount
+
+    let toGraphDescriptionLanguage graph = 
+
+        let start_graph = if graph.IsDirected then
+                              "digraph {"
+                          else
+                              "graph {"
+        let end_graph = "}"
+
+        [start_graph; end_graph] |> String.concat "\n"
+        // 1 -> 2  // directed
+        // or
+        // 1 -- 2 // undirected
+        // (but not also 2 -- 1 else shows as a parallel edge which we do not need)
+        //graph.Vertices |>
+
+    let makeGraphVisualisation dotDescription = 
+        // dot -Tpng foo.dot -o foo.png
+        true
