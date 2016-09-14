@@ -9,6 +9,20 @@ open System.Collections.Generic
 open System.IO
 
 let home = Environment.GetEnvironmentVariable("HOME")
-let graph_file = Path.Combine(home, "dev/rust/mazes/le-graph.text")
+let maze_graph_file = Path.Combine(home, "dev/rust/mazes/le-graph.text")
 
-let g = Graphs.readGraph graph_file
+let test_graph_file file_name = 
+    let dir = Path.Combine(__SOURCE_DIRECTORY__, @"../../tests/Graphs.Tests/") 
+    Path.Combine(dir, file_name) |> Path.GetFullPath 
+    
+let dag_file = test_graph_file "directed_graph.txt"
+let undirected_file = test_graph_file "undirected_graph.txt"
+
+let g_dag = Graphs.readGraph dag_file true
+let g_undir = Graphs.readGraph undirected_file false
+let g_maze = Graphs.readGraph maze_graph_file false
+
+
+Graphs.reverseDirectedGraph g_dag
+
+Graphs.isDAG g_dag

@@ -68,8 +68,12 @@ module Graphs =
                               Neighbours = new ResizeArray<VertexId>() } |]
             
         for (v1, v2) in edgeVertexPairs do 
+            // v1 -> v2
             verts.[v1.Id].Neighbours.Add(v2)
-            verts.[v2.Id].Neighbours.Add(v1)
+            
+            // v2 -> v1 for bi-directionality
+            if not isDirected then 
+                verts.[v2.Id].Neighbours.Add(v1)
 
         { VerticesCount = verticesCount; 
           IsDirected = isDirected;
@@ -125,51 +129,107 @@ module Graphs =
             Some(reverseGraph)
         else
             None
-           
+          
 
     let isDAG graph = 
         // Is it a directed *acyclic* graph?
+        // Option 1:
         // - Check if the graph has any strongly connected components with more than vertex
         //   This is best for finding all cycles in a graph, maybe overkill for finding if any cycles exist
-        //
-        // - Another approach is to detect any back edges in the DFS stack.
-        // There is a cycle in a graph only if there is a back edge present in the graph (self link or link to parent). 
-        // This involves checking whether a new node exists in the current dfs stack.
-        // A simple scan of the stack is O(n) and doing this for each step in dfs is costly - O(n^2). O(|V|+|E|) for dfs component.
-        // hashset - NO, we have a fixed number of vertices so can use a bitset
-        // boolean array or bitset
-        // Clearing and setting bits as the recursion goes keeps the complexity at O(|V|+|E|)
-        //
-        // https://stackoverflow.com/questions/261573/best-algorithm-for-detecting-cycles-in-a-directed-graph
-        if graph.IsDirected then 
+        // Option 2:
+        // - Detect any back edges in the DFS stack.
+        //   There is a cycle in a graph only if there is a back edge present in the graph (self link or link to parent). 
+        //   This involves checking whether a new node exists in the current dfs stack.
+        
+        let checkDAG graph =
             let visitedSet = new HashSet<VertexId>() // or make a BitArray
-            let dfsRecursionStackVertexIds = Array.create graph.VerticesCount false
-
-
+            let dfsRecursionStackVertexIds: bool[] = Array.create (graph.VerticesCount + 1) false
+            
             let rec explore (vertexId: VertexId) =  // returns true if a back-edge is found                
-                            
-                if dfsRecursionStackVertexIds.[vertexId.Id] then
-                    // This is a back-edge pointing to vertex curretly being visited in the dfs recursion stack.
-                    true
-                else
-                    // Not visited before (and so definitely also not in the dfs recursion stack)
-                    visitedSet.Add(vertexId) |> ignore                
-                    dfsRecursionStackVertexIds.[vertexId.Id] <- true
+                dfsRecursionStackVertexIds.[vertexId.Id] || visitThisThenExploreChildren vertexId
 
-                    let vertex = vertexFromId graph vertexId
-                    for neighbourVertexId in vertex.Neighbours do
-                        if not (visitedSet.Contains(neighbourVertexId)) then 
-                            explore vertexId 
+            and visitThisThenExploreChildren (vertexId: VertexId) = 
+                visitedSet.Add(vertexId) |> ignore                
+                dfsRecursionStackVertexIds.[vertexId.Id] <- true
+
+                let vertex = vertexFromId graph vertexId                    
+                let mutable foundBackEdge = false // or use computation expressions http://tomasp.net/blog/imperative-i-return.aspx/
+                for neighbourVertexId in vertex.Neighbours do
+                    if not foundBackEdge && not (visitedSet.Contains(neighbourVertexId)) then 
+                        foundBackEdge <- explore vertexId
                                                 
-                    dfsRecursionStackVertexIds.[vertexId.Id] <- false                    
-                    false
+                dfsRecursionStackVertexIds.[vertexId.Id] <- false                    
+                foundBackEdge
 
+            let mutable foundBackEdge = false
             for vertex in verticesSeq graph do
-                if not (visitedSet.Contains(vertex.Identifier)) then
-                    if explore vertex.Identifier then 
-                        true 
+                if not foundBackEdge && not (visitedSet.Contains(vertex.Identifier)) then
+                    foundBackEdge <- explore vertex.Identifier
+            
+            foundBackEdge
+
+        graph.IsDirected && checkDAG graph
+
+    let dfsPrePostOrderNumbers graph = 
+        let visitedSet = new HashSet<VertexId>()
+        let visitOrderNumbers = Array.create (graph.VerticesCount + 1) (0, 0)
+        let mutable visitNumber = 0
+
+        let rec explore (vertexId: VertexId) = 
+            
+            let preOrderVisitNumber = visitNumber
+            visitedSet.Add(vertexId) |> ignore
+            visitOrderNumbers.[vertexId.Id] <- (preOrderVisitNumber, 0)
+            visitNumber <- visitNumber + 1
+
+            let vertex = vertexFromId graph vertexId
+            for neighbourVertexId in vertex.Neighbours do 
+                if not (visitedSet.Contains(neighbourVertexId)) then 
+                    explore neighbourVertexId
+
+            let postOrderVisitNumber = visitNumber
+            visitOrderNumbers.[vertexId.Id] <- (preOrderVisitNumber, postOrderVisitNumber)
+            visitNumber <- visitNumber + 1
+
+        for v in verticesSeq graph do
+            if not (visitedSet.Contains(v.Identifier)) then
+                explore v.Identifier 
+
+        visitOrderNumbers
+  
+(*      
+    let stronglyConnectedComponents (graph: Graph) = 
+        
+        let components = 
+            // The vertex with the largest dfs post order number is in a source component
+            // To get the sink component we need to reverse the graph and find the largest
+            // post order number
+            let processReverseGraph reverseGraph = 
+                let visitedSet = new HashSet<VertexId>()
+
+                let rec explore (vertexId: VertexId) = 
+                    visitedSet.Add(vertexId) |> ignore
+                    let vertex = vertexFromId reverseGraph vertexId
+                    for neighbourVertexId in vertex.Neighbours do 
+                        if not (visitedSet.Contains(neighbourVertexId)) then 
+                            explore neighbourVertexId
+
+                for v in verticesSeq reverseGraph do
+                    if not (visitedSet.Contains(v.Identifier)) then
+                        explore v.Identifier 
+
+                []
+
+            match reverseDirectedGraph graph with
+            | None -> []
+            | Some(rg) -> processReverseGraph rg
+                       
+
+        if graph.isDirected then
+            Some(components)
         else 
-            false
+            None
+*)
 
     let topologicalOrdering dag = 
         // source(s) at the start of the output, sink(s) at the end
