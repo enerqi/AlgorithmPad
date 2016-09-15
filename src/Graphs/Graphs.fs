@@ -237,7 +237,7 @@ module Graphs =
         // source(s) at the start of the output, sink(s) at the end
         []
 
-    let edgesSet graph = 
+    let edgesSet graph : Set<int * int> = 
                     
         let edgeFrom : (int -> VertexId -> int * int) = 
             if graph.IsDirected then
@@ -258,25 +258,50 @@ module Graphs =
         |> Stream.ofArray
         |> Stream.mapi (fun index v -> (index, v.Neighbours))
         |> Stream.flatMap allEdgesFrom
-        |> Stream.toSeq
+        |> Stream.toSeq        
         |> Set.ofSeq
           
         
-    let toGraphDescriptionLanguage graph = 
+    let toDotGraphDescriptionLanguage graph = 
 
-        let start_graph = if graph.IsDirected then
-                              "digraph {"
-                          else
-                              "graph {"
-        let end_graph = "}"
+        let description_open = 
+            if graph.IsDirected then
+                "digraph {"
+            else
+                "graph {"
+        let description_close = "}"
 
-        [start_graph; end_graph] |> String.concat "\n"
-        // 1 -> 2  // directed
-        // or
-        // 1 -- 2 // undirected
-        // (but not also 2 -- 1 else shows as a parallel edge which we do not need)
-        //graph.Vertices |>
+        let edgeToString = 
+            let edgeSyntax = 
+                if graph.IsDirected then
+                    " -> "
+                else 
+                    " -- "
+            (fun (v1, v2) -> 
+                string v1 + edgeSyntax + string v2)
 
-    let makeGraphVisualisation dotDescription = 
-        // dot -Tpng foo.dot -o foo.png
-        true
+        let edges = edgesSet graph  // (int, int) not IComparable...sigh
+        let edgeDescriptions = edges 
+                               |> Seq.map edgeToString
+                               |> Seq.map (fun s -> "    " + s)
+
+        seq { yield description_open
+              yield! edgeDescriptions
+              yield description_close}
+        |> String.concat "\n"
+
+    let makeGraphVisualisation dotDescription outFilePathNoExtension = 
+        // outFilePathNoExtension : check directory exists
+        let dotTempFileName = Path.GetTempFileName()
+        File.WriteAllText(dotTempFileName, dotDescription)
+        // Shell: dot -Tpng dotTempFileName -o outFilePathNoExtension + ".png"
+        // ? https://fsharp.github.io/FAKE/apidocs/fake-processhelper.html
+        (*
+        System.Diagnostics.Process process = new System.Diagnostics.Process();
+        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+        startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+        startInfo.FileName = "cmd.exe";
+        startInfo.Arguments = "/C copy /b Image1.jpg + Archive.rar Image2.jpg";
+        process.StartInfo = startInfo;
+        process.Start();
+        *)

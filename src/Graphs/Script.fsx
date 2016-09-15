@@ -32,3 +32,7 @@ Graphs.isDAG g_dag
 
 Graphs.dfsPrePostOrderNumbers g_dag
 
+Graphs.edgesSet g_dag
+
+Graphs.toDotGraphDescriptionLanguage g_dag
+Graphs.toGraphDescriptionLanguage g_undir
