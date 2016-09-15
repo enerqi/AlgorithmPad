@@ -2,8 +2,8 @@
 open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("Graphs")>]
-[<assembly: AssemblyProductAttribute("Graphs")>]
-[<assembly: AssemblyDescriptionAttribute("Graph Algorithms")>]
+[<assembly: AssemblyProductAttribute("AlgorithmPad")>]
+[<assembly: AssemblyDescriptionAttribute("Algorithms Scratchpad")>]
 [<assembly: AssemblyVersionAttribute("1.0")>]
 [<assembly: AssemblyFileVersionAttribute("1.0")>]
 do ()

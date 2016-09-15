@@ -4,6 +4,8 @@ open System
 open System.Collections.Generic 
 open System.IO
 
+open Nessos.Streams
+
 module Graphs = 
 
     type VertexId = 
@@ -234,10 +236,31 @@ module Graphs =
     let topologicalOrdering dag = 
         // source(s) at the start of the output, sink(s) at the end
         []
+(*
+    let edgesSet graph = 
+                    
+        let edgeFrom : (int -> VertexId -> int * int) = 
+            if graph.IsDirected then
+                (fun (vertexIndex: int) (neighbourVertexId: VertexId) ->
+                    (vertexIndex, neighbourVertexId.Id))                    
+            else
+                let orderEdgeVertices (a, b) = 
+                    if a <= b then (a, b) else (b, a)                
+                (fun (vertexIndex: int) (neighbourVertexId: VertexId) ->
+                    orderEdgeVertices (vertexIndex, neighbourVertexId.Id))                       
 
-    let edges undirected_graph = 
-        [(0, 0)]
-        // Array.create undirected_graph.EdgesCount
+        let allEdgesFrom (vertexIndex: int, neighbours: Stream<VertexId>) =
+            [| for v in neighbours do 
+               yield edgeFrom vertexIndex v|]
+            
+        graph.Vertices
+        |> Stream.ofArray
+        |> Stream.map (fun v -> v.Neighbours)
+        |> Stream.mapi allEdgesFrom
+        |> Stream.concat
+        |> Set.ofArray
+  *)          
+        
 
     let toGraphDescriptionLanguage graph = 
 
