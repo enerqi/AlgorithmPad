@@ -1,4 +1,5 @@
 FSharp.Core
+Streams
 group Test
 NUnit
 NUnit.Runners
