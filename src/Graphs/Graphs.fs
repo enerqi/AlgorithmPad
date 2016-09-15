@@ -236,7 +236,7 @@ module Graphs =
     let topologicalOrdering dag = 
         // source(s) at the start of the output, sink(s) at the end
         []
-(*
+
     let edgesSet graph = 
                     
         let edgeFrom : (int -> VertexId -> int * int) = 
@@ -249,19 +249,19 @@ module Graphs =
                 (fun (vertexIndex: int) (neighbourVertexId: VertexId) ->
                     orderEdgeVertices (vertexIndex, neighbourVertexId.Id))                       
 
-        let allEdgesFrom (vertexIndex: int, neighbours: Stream<VertexId>) =
-            [| for v in neighbours do 
-               yield edgeFrom vertexIndex v|]
+        let allEdgesFrom (vertexIndex: int, neighbours: seq<VertexId>) =
+           seq { for v in neighbours do 
+                 yield edgeFrom vertexIndex v }
+           |> Stream.cast // seq to stream
             
         graph.Vertices
         |> Stream.ofArray
-        |> Stream.map (fun v -> v.Neighbours)
-        |> Stream.mapi allEdgesFrom
-        |> Stream.concat
-        |> Set.ofArray
-  *)          
+        |> Stream.mapi (fun index v -> (index, v.Neighbours))
+        |> Stream.flatMap allEdgesFrom
+        |> Stream.toSeq
+        |> Set.ofSeq
+          
         
-
     let toGraphDescriptionLanguage graph = 
 
         let start_graph = if graph.IsDirected then

@@ -1,7 +1,7 @@
 // Learn more about F# at http://fsharp.org. See the 'F# Tutorial' project
 // for more guidance on F# programming.
 #I "../../packages"
-#r "Streams/lib/net45/Streams.dll"  // better way to not refer to specific .net version number?
+#r "Streams/lib/net45/Streams.dll" 
 
 #load "Graphs.fs"
 
