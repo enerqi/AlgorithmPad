@@ -1,5 +1,6 @@
 FSharp.Core
 Streams
+FAKE
 group Test
 NUnit
 NUnit.Runners

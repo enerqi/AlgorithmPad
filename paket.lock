@@ -1,5 +1,6 @@
 NUGET
   remote: https://www.nuget.org/api/v2
+    FAKE (4.39.1)
     FSharp.Core (4.0.0.1) - redirects: force
     Streams (0.4.1)
 

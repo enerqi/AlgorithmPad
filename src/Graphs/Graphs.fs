@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic 
 open System.IO
 
+module Proc = Fake.ProcessHelper
 open Nessos.Streams
 
 module Graphs = 
@@ -292,16 +293,13 @@ module Graphs =
 
     let makeGraphVisualisation dotDescription outFilePathNoExtension = 
         // outFilePathNoExtension : check directory exists
+        let outDir = Path.GetDirectoryName(outFilePathNoExtension)
+        
         let dotTempFileName = Path.GetTempFileName()
         File.WriteAllText(dotTempFileName, dotDescription)
-        // Shell: dot -Tpng dotTempFileName -o outFilePathNoExtension + ".png"
-        // ? https://fsharp.github.io/FAKE/apidocs/fake-processhelper.html
-        (*
-        System.Diagnostics.Process process = new System.Diagnostics.Process();
-        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-        startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-        startInfo.FileName = "cmd.exe";
-        startInfo.Arguments = "/C copy /b Image1.jpg + Archive.rar Image2.jpg";
-        process.StartInfo = startInfo;
-        process.Start();
-        *)
+        
+        let dotCmd = "dot"
+        let dotArgs = dotTempFileName + " -o " + outFilePathNoExtension + ".png"
+        //let dotCmd = "dot -Tpng " + dotTempFileName + " -o " + outFilePathNoExtension + ".png"
+        Proc.Shell.Exec(dotCmd, dotArgs, outDir)
+

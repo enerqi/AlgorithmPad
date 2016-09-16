@@ -1,7 +1,6 @@
-// Learn more about F# at http://fsharp.org. See the 'F# Tutorial' project
-// for more guidance on F# programming.
 #I "../../packages"
-#r "Streams/lib/net45/Streams.dll" 
+#r @"Streams/lib/net45/Streams.dll" 
+#r @"FAKE/tools/FakeLib.dll"
 
 #load "Graphs.fs"
 
@@ -35,4 +34,4 @@ Graphs.dfsPrePostOrderNumbers g_dag
 Graphs.edgesSet g_dag
 
 Graphs.toDotGraphDescriptionLanguage g_dag
-Graphs.toGraphDescriptionLanguage g_undir
+Graphs.toDotGraphDescriptionLanguage g_undir
