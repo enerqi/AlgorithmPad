@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Graphs.Tests</RootNamespace>
     <AssemblyName>Graphs.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <Name>Graphs.Tests</Name>
     <TargetFrameworkProfile />
