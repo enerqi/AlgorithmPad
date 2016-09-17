@@ -263,15 +263,18 @@ module Graphs =
         |> Set.ofSeq
           
         
-    let toDotGraphDescriptionLanguage graph = 
+module GraphViz = 
 
-        let description_open = 
+    open Graphs
+
+    let toDotGraphDescriptionLanguage (graph: Graph) = 
+        let descriptionOpen = 
             if graph.IsDirected then
                 "digraph {"
             else
                 "graph {"
-        let description_close = "}"
-
+        let descriptionClose = "}"
+        
         let edgeToString = 
             let edgeSyntax = 
                 if graph.IsDirected then
@@ -281,25 +284,29 @@ module Graphs =
             (fun (v1, v2) -> 
                 string v1 + edgeSyntax + string v2)
 
-        let edges = edgesSet graph  // (int, int) not IComparable...sigh
+        let edges = Graphs.edgesSet graph
         let edgeDescriptions = edges 
                                |> Seq.map edgeToString
                                |> Seq.map (fun s -> "    " + s)
 
-        seq { yield description_open
+        seq { yield descriptionOpen
               yield! edgeDescriptions
-              yield description_close}
+              yield descriptionClose}
         |> String.concat "\n"
 
     let makeGraphVisualisation dotDescription outFilePathNoExtension = 
-        // outFilePathNoExtension : check directory exists
+        
         let outDir = Path.GetDirectoryName(outFilePathNoExtension)
+
+        if Directory.Exists outDir |> not then 
+            failwith <| sprintf "Directory of the output file does not exist: %s" outDir
         
         let dotTempFileName = Path.GetTempFileName()
         File.WriteAllText(dotTempFileName, dotDescription)
         
         let dotCmd = "dot"
-        let dotArgs = dotTempFileName + " -o " + outFilePathNoExtension + ".png"
-        //let dotCmd = "dot -Tpng " + dotTempFileName + " -o " + outFilePathNoExtension + ".png"
-        Proc.Shell.Exec(dotCmd, dotArgs, outDir)
+        let dotVisualisationFile = outFilePathNoExtension + ".png"
+        let dotArgs = "-Tpng " + dotTempFileName + " -o " + dotVisualisationFile
+        Proc.Shell.Exec(dotCmd, dotArgs, outDir) |> ignore
 
+        dotVisualisationFile
