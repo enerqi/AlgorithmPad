@@ -60,7 +60,10 @@
   -->
   <Import Project="..\..\.paket\paket.targets" />
   <ItemGroup>
-    <Compile Include="Graphs.fs" />
+    <Compile Include="DomainTypes.fs" />
+    <Compile Include="Generation.fs" />
+    <Compile Include="Algorithms.fs" />
+    <Compile Include="Visualisation.fs" />
     <None Include="Script.fsx" />
     <None Include="paket.references" />
     <None Include="paket.template" />

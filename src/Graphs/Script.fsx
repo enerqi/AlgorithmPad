@@ -1,14 +1,17 @@
 #I "../../packages"
 #r @"Streams/lib/net45/Streams.dll" 
 #r @"FAKE/tools/FakeLib.dll"
+#load "DomainTypes.fs"
+#load "Generation.fs"
+#load "Algorithms.fs"
+#load "Visualisation.fs"
 
-#load "Graphs.fs"
-
-open Graphs
-open GraphViz
 open System
 open System.Collections.Generic 
 open System.IO
+
+open Graphs
+
 
 let home = Environment.GetEnvironmentVariable("HOME")
 let maze_graph_file = Path.Combine(home, "dev/rust/mazes/le-graph.text")
@@ -17,20 +20,20 @@ let test_graph_file file_name =
     Path.Combine(dir, file_name) |> Path.GetFullPath     
 let dag_file = test_graph_file "directed_graph.txt"
 let undirected_file = test_graph_file "undirected_graph.txt"
-let g_dag = Graphs.readGraph dag_file true
-let g_undir = Graphs.readGraph undirected_file false
-let g_maze = Graphs.readGraph maze_graph_file false
+let g_dag = Generation.readGraph dag_file true
+let g_undir = Generation.readGraph undirected_file false
+let g_maze = Generation.readGraph maze_graph_file false
 
-Graphs.reverseDirectedGraph g_dag
-Graphs.isDAG g_dag
-Graphs.dfsPrePostOrderNumbers g_dag
-Graphs.edgesSet g_dag
+Algorithms.reverseDirectedGraph g_dag
+Algorithms.isDAG g_dag
+Algorithms.dfsPrePostOrderNumbers g_dag
+Algorithms.edgesSet g_dag
 
-GraphViz.toDotGraphDescriptionLanguage g_undir
+Visualisation.toDotGraphDescriptionLanguage g_undir
 let outdir = __SOURCE_DIRECTORY__
 let outFile = Path.Combine(outdir, "dag")
-let dag_dot_definition = GraphViz.toDotGraphDescriptionLanguage g_dag
-let vizFile = GraphViz.makeGraphVisualisation dag_dot_definition outFile
+let dag_dot_definition = Visualisation.toDotGraphDescriptionLanguage g_dag
+let vizFile = Visualisation.makeGraphVisualisation dag_dot_definition outFile
 
 /// Use the system shell (command prompt) to open the file - F# interactive only
 let shellOpenFileWithDefaultApplication fileName =
