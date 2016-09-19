@@ -1,10 +1,6 @@
 namespace Graphs
 
-open System
 open System.Collections.Generic 
-open System.IO
-
-module Proc = Fake.ProcessHelper
 open Nessos.Streams
 
 module Algorithms = 
