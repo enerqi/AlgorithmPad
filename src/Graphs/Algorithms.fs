@@ -128,7 +128,7 @@ module Algorithms =
 
         visitOrderNumbers
   
-(*      
+     
     let stronglyConnectedComponents (graph: Graph) = 
         
         let components = 
@@ -153,14 +153,13 @@ module Algorithms =
 
             match reverseDirectedGraph graph with
             | None -> []
-            | Some(rg) -> processReverseGraph rg
-                       
+            | Some(rg) -> processReverseGraph rg                     
 
-        if graph.isDirected then
+        if graph.IsDirected then
             Some(components)
         else 
             None
-*)
+
 
     let topologicalOrdering dag = 
         // source(s) at the start of the output, sink(s) at the end
