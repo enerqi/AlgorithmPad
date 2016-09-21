@@ -41,7 +41,7 @@ module Visualisation =
         
         let outDir = Path.GetDirectoryName(outFilePathNoExtension)
 
-        if Directory.Exists outDir |> not then 
+        if not (Directory.Exists outDir) then 
             failwith <| sprintf "Directory of the output file does not exist: %s" outDir
         
         let dotTempFileName = Path.GetTempFileName()
@@ -50,9 +50,13 @@ module Visualisation =
         let dotCmd = "dot"
         let dotVisualisationFile = outFilePathNoExtension + ".png"
         let dotArgs = "-Tpng " + dotTempFileName + " -o " + dotVisualisationFile
-        Proc.Shell.Exec(dotCmd, dotArgs, outDir) |> ignore
 
-        dotVisualisationFile
-
+        try
+            Proc.Shell.Exec(dotCmd, dotArgs, outDir) |> ignore
+            Some(dotVisualisationFile)
+        with 
+            | :? System.ComponentModel.Win32Exception as e ->
+                    printfn """Failed to run graph visual creation process "%s".\n%A""" (dotCmd + " " + dotArgs) e
+                    None
 
 

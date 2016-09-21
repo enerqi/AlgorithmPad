@@ -46,4 +46,6 @@ let shellOpenFileWithDefaultApplication fileName =
     // it's really only the start up cost of cmd.exe that we are blocked on.
     Fake.ProcessHelper.ExecProcess setupProcess (TimeSpan.FromSeconds 2.0) 
 
-shellOpenFileWithDefaultApplication vizFile
+match vizFile with
+| Some(f) -> shellOpenFileWithDefaultApplication f |> ignore
+| _ -> ()
