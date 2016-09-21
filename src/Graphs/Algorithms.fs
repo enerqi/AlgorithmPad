@@ -169,8 +169,15 @@ module Algorithms =
         
 
     let topologicalOrdering dag = 
-        // source(s) at the start of the output, sink(s) at the end
-        []
+        // Read off the reverse post order numbers        
+        dfsPrePostOrderNumbers dag
+        |> Stream.ofArray
+        |> Stream.mapi (fun index prePostOrderNums -> (VertexId index, prePostOrderNums))
+        |> Stream.skip 1 // ignore the 0 index vertex put in to make 1 based indexing easier                                                           
+        |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
+        |> Stream.map (fun (vId, _) -> vId)
+        |> Stream.toArray
+            
 
     let edgesSet graph : Set<int * int> = 
                     

@@ -52,11 +52,15 @@ let g_maze = Generation.readGraph maze_graph_file false
 let ssc_file = test_graph_file "strong_components_graph.txt"
 let g_scc = Generation.readGraph ssc_file true
 
+let linear_file = test_graph_file "linearly_ordered_graph.txt"
+let g_linear = Generation.readGraph linear_file true
+
 Algorithms.reverseDirectedGraph g_dag
 Algorithms.isDAG g_dag
 Algorithms.dfsPrePostOrderNumbers g_dag
 Algorithms.edgesSet g_dag
 Algorithms.stronglyConnectedComponents g_dag
+Algorithms.topologicalOrdering g_dag
 
 Visualisation.toDotGraphDescriptionLanguage g_undir
 
