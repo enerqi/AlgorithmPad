@@ -127,43 +127,55 @@ module Algorithms =
                 explore v.Identifier 
 
         visitOrderNumbers
-  
-     
-    let stronglyConnectedComponents (graph: Graph) = 
-        
-        let components = 
+    
+    let stronglyConnectedComponents (graph: Graph) : ResizeArray<ResizeArray<VertexId>> option = 
+                
+        let findComponents reverseGraph = 
             // The vertex with the largest dfs post order number is in a source component
             // To get the sink component we need to reverse the graph and find the largest
             // post order number
-            let processReverseGraph reverseGraph = 
-                let visitedSet = new HashSet<VertexId>()
+            // At that point exploring the graph (not reverse graph) in reverse post order
+            // allows us to collect the strongly connected components
+            let reversePostOrderVertices = 
+                dfsPrePostOrderNumbers reverseGraph
+                |> Stream.ofArray
+                |> Stream.mapi (fun index prePostOrderNums -> (VertexId index, prePostOrderNums))
+                |> Stream.skip 1 // ignore the 0 index vertex put in to make 1 based indexing easier                                                           
+                |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
+                |> Stream.toArray
 
-                let rec explore (vertexId: VertexId) = 
-                    visitedSet.Add(vertexId) |> ignore
-                    let vertex = vertexFromId reverseGraph vertexId
-                    for neighbourVertexId in vertex.Neighbours do 
-                        if not (visitedSet.Contains(neighbourVertexId)) then 
-                            explore neighbourVertexId
+            let visitedSet = new HashSet<VertexId>()
+            let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
+                
+            let rec explore (vertexId: VertexId) (currentComponentGroup: ResizeArray<VertexId>) = 
+                visitedSet.Add(vertexId) |> ignore
+                currentComponentGroup.Add(vertexId)
+                                                
+                let vertex = vertexFromId graph vertexId
+                for neighbourVertexId in vertex.Neighbours do 
+                    if not (visitedSet.Contains(neighbourVertexId)) then 
+                        explore neighbourVertexId currentComponentGroup
 
-                for v in verticesSeq reverseGraph do
-                    if not (visitedSet.Contains(v.Identifier)) then
-                        explore v.Identifier 
+            for (vId, _) in reversePostOrderVertices do 
+                if not (visitedSet.Contains(vId)) then 
+                    componentGroups.Add(new ResizeArray<VertexId>())
+                    let newestComponentGroup = componentGroups.[componentGroups.Count - 1]
+                    explore vId newestComponentGroup
+                
+            componentGroups
 
-                []
-
-            match reverseDirectedGraph graph with
-            | None -> []
-            | Some(rg) -> processReverseGraph rg                     
-
-        if graph.IsDirected then
-            Some(components)
-        else 
-            None
-
+        reverseDirectedGraph graph |> Option.map findComponents
 
     let topologicalOrdering dag = 
-        // source(s) at the start of the output, sink(s) at the end
-        []
+        // Read off the reverse post order numbers        
+        dfsPrePostOrderNumbers dag
+        |> Stream.ofArray
+        |> Stream.mapi (fun index prePostOrderNums -> (VertexId index, prePostOrderNums))
+        |> Stream.skip 1 // ignore the 0 index vertex put in to make 1 based indexing easier                                                           
+        |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
+        |> Stream.map (fun (vId, _) -> vId)
+        |> Stream.toArray
+            
 
     let edgesSet graph : Set<int * int> = 
                     

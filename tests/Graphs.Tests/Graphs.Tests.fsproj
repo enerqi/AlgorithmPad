@@ -68,6 +68,8 @@
     <Content Include="App.config" />
     <Content Include="directed_graph.txt" />
     <Content Include="undirected_graph.txt" />
+    <Content Include="strong_components_graph.txt" />
+    <Content Include="linearly_ordered_graph.txt" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
