@@ -127,8 +127,7 @@ module Algorithms =
                 explore v.Identifier 
 
         visitOrderNumbers
-  
-   
+    
     let stronglyConnectedComponents (graph: Graph) : ResizeArray<ResizeArray<VertexId>> option = 
                 
         let findComponents reverseGraph = 
@@ -166,7 +165,6 @@ module Algorithms =
             componentGroups
 
         reverseDirectedGraph graph |> Option.map findComponents
-        
 
     let topologicalOrdering dag = 
         // Read off the reverse post order numbers        
