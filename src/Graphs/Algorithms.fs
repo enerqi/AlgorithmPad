@@ -203,3 +203,59 @@ module Algorithms =
         |> Stream.toSeq        
         |> Set.ofSeq
           
+
+    let bfs graph (source: VertexId) : BFS = 
+        
+        let distances = Array.create (graph.VerticesCount + 1) None
+        let pathTree = Array.create (graph.VerticesCount + 1) None
+        distances.[source.Id] = Some(Distance 0u) |> ignore
+        let q = new Queue<VertexId>(seq { yield source })  
+
+        let stepDistance (dist: Distance option): Distance option = 
+            match dist with 
+            | Some(d) -> Some (Distance <| d.Distance + 1u)
+            | None -> failwith "Algorithm error, distance to previous point in path should not be None."
+            
+        while q.Count > 0 do 
+            let vId = q.Dequeue()
+            let vertex = vertexFromId graph vId
+            for neighbourId in vertex.Neighbours do 
+                if distances.[neighbourId.Id].IsNone then
+                    q.Enqueue(neighbourId)
+                    let neighbourIndex = neighbourId.Id
+                    let vIndex = vId.Id
+                    distances.[neighbourIndex] <- stepDistance distances.[vIndex]
+                    pathTree.[neighbourIndex] <- Some(vId)
+                    
+        {Source = source
+         ShortestPathDistances = distances
+         ShortestPathTree = pathTree}
+     
+
+    let shortestPath (bfsData: BFS) (v: VertexId): ResizeArray<VertexId> option = 
+
+        if bfsData.ShortestPathTree.[v.Id].IsSome then
+            let path = new ResizeArray<VertexId>()
+            let mutable currentPathStep = v
+            while currentPathStep <> bfsData.Source do 
+                path.Add(currentPathStep)
+                let pathIndex = currentPathStep.Id
+                match bfsData.ShortestPathTree.[pathIndex] with 
+                | Some(nextStep) -> currentPathStep <- nextStep
+                | None -> failwith "BFS algorithm error, reached a dead end in the path"
+            
+            path.Reverse()
+            Some(path)
+        else
+            None
+
+    let isBipartite graph =
+        // Its vertices can be split into two parts such that each edge of the
+        // graph joins to vertices from different parts
+        // In other words, a graph is bipartite if its vertices can be colored with two colors
+        // (say, black and white) such that the endpoints of each edge have different colors. 
+
+        // Run BFS and store the colour of each vertex as we go along, changing it on each edge
+        // traversal. If the colour is already set and does not match the expected colour coming
+        // out of another vertex then it isn't bipartite.
+        true 

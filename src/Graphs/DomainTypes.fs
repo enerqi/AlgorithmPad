@@ -21,3 +21,14 @@ module DomainTypes =
         EdgesCount: int
     }
 
+    type Distance = 
+        struct 
+            val Distance: uint32
+            new(d: uint32) = {Distance = d}
+        end
+
+    type BFS = {
+        Source: VertexId
+        ShortestPathDistances: Distance option []
+        ShortestPathTree: VertexId option []
+    }
