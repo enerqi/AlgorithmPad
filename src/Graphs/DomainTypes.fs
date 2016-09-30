@@ -32,3 +32,5 @@ module DomainTypes =
         ShortestPathDistances: Distance option []
         ShortestPathTree: VertexId option []
     }
+
+    type internal TwoColouring = Red | Green | Uncoloured

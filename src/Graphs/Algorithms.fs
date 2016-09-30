@@ -206,7 +206,7 @@ module Algorithms =
         
         let distances = Array.create (graph.VerticesCount + 1) None
         let pathTree = Array.create (graph.VerticesCount + 1) None
-        distances.[source.Id] = Some(Distance 0u) |> ignore
+        distances.[source.Id] <- Some(Distance 0u)
         let q = new Queue<VertexId>(seq { yield source })  
 
         let stepDistance (dist: Distance option): Distance option = 
@@ -256,4 +256,35 @@ module Algorithms =
         // Run BFS and store the colour of each vertex as we go along, changing it on each edge
         // traversal. If the colour is already set and does not match the expected colour coming
         // out of another vertex then it isn't bipartite.
-        true 
+        
+        let twoColourings = Array.create (graph.VerticesCount + 1) Uncoloured
+        let firstVertexIndex = 1
+        twoColourings.[firstVertexIndex] <- Red
+        let q = Queue<VertexId>(seq { yield VertexId firstVertexIndex})
+
+        let oppositeColour colour = 
+            match colour with 
+            | Red -> Green
+            | Green -> Red
+            | Uncoloured -> Uncoloured
+
+        let mutable failedTwoColouring = false
+        while q.Count > 0 && not failedTwoColouring do
+                
+            let vId = q.Dequeue()
+            let vIndex = vId.Id
+            let vColour = twoColourings.[vIndex]
+            let requiredNeighboursColour = oppositeColour vColour
+            let vertex = vertexFromId graph vId
+                
+            for neighbourId in vertex.Neighbours do 
+                let neighbourIndex = neighbourId.Id
+                let neighbourColour = twoColourings.[neighbourIndex]
+                match neighbourColour with 
+                | Blank ->
+                    q.Enqueue(neighbourId)
+                    twoColourings.[neighbourIndex] <- requiredNeighboursColour
+                | _ -> if neighbourColour <> requiredNeighboursColour then
+                            failedTwoColouring <- true           
+
+        not failedTwoColouring 
