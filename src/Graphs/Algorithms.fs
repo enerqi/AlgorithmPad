@@ -281,7 +281,7 @@ module Algorithms =
                 let neighbourIndex = neighbourId.Id
                 let neighbourColour = twoColourings.[neighbourIndex]
                 match neighbourColour with 
-                | Blank ->
+                | Uncoloured ->
                     q.Enqueue(neighbourId)
                     twoColourings.[neighbourIndex] <- requiredNeighboursColour
                 | _ -> if neighbourColour <> requiredNeighboursColour then
