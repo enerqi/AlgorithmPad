@@ -1,4 +1,8 @@
 FSharp.Core
 Streams
 FAKE
-fuchu
+group Test
+Fuchu
+FsUnit
+Unquote
+Fuchu.FsCheck
