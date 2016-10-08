@@ -2,6 +2,3 @@ FSharp.Core
 Streams
 FAKE
 fuchu
-group Test
-NUnit
-NUnit.Runners

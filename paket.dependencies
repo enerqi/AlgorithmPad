@@ -14,8 +14,10 @@ group Build
 
   github fsharp/FAKE modules/Octokit/Octokit.fsx
 
-group Test
   source https://nuget.org/api/v2
   
-  nuget NUnit ~> 2
-  nuget NUnit.Runners ~> 2
+
+group Test
+source https://www.nuget.org/api/v2
+
+nuget fuchu
