@@ -2,6 +2,7 @@
 #r @"Streams/lib/net45/Streams.dll" 
 #r @"FAKE/tools/FakeLib.dll"
 #load "DomainTypes.fs"
+#load "Graph.fs"
 #load "Generation.fs"
 #load "Algorithms.fs"
 #load "Visualisation.fs"

@@ -3,13 +3,9 @@ namespace Graphs
 open System.Collections.Generic 
 open Nessos.Streams
 
-module Algorithms = 
+module Algorithms =          
 
-    let vertexFromId graph (v: VertexId) =
-        graph.Vertices.[v.Id]
-
-    let verticesSeq graph = 
-        Seq.ofArray graph.Vertices |> Seq.skip 1         
+    open Graph   
 
     let pathExists graph (v1: VertexId) (v2: VertexId) = 
         let visitedSet = new HashSet<VertexId>() 

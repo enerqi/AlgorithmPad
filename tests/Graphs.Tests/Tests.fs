@@ -1,13 +1,157 @@
 module Graphs.Tests
 
+open System
+open System.IO
+
 open Graphs
 open Fuchu
 open FsUnit
 open Swensen.Unquote
 open Swensen.Unquote.Operators // [Under the hood extras]
 
-let fsCheckConfigOverride = { FsCheck.Config.Default with MaxTest = 10000 }
+module private TestUtils =
+    let test_graph_file file_name = 
+        let testFilesDir = __SOURCE_DIRECTORY__
+        let path = Path.GetFullPath (Path.Combine(testFilesDir, file_name))
+        if not <| File.Exists(path) then 
+            failwith <| sprintf "test file %s not found" path
+        path
 
+    let load_undirected_test_graph = 
+        let isDirected = false
+        Generation.readGraph (test_graph_file "undirected_graph.txt") isDirected
+
+    let load_directed_test_graph = 
+        let isDirected = true
+        Generation.readGraph (test_graph_file "directed_graph.txt") isDirected
+
+    let neighbours graph vertexIdNumber = 
+        VertexId vertexIdNumber 
+        |> Graph.vertexFromId graph 
+        |> (fun v -> v.Neighbours)
+
+    let neighbourIdNumbers graph vertexIdNumber = 
+        neighbours graph vertexIdNumber
+        |> Seq.map (fun vId -> vId.Id)
+        |> Array.ofSeq
+        |> Array.sort
+
+open TestUtils
+
+[<Tests>]
+let graphTypeTests = 
+    testList "Graph ADT" [
+        testCase "vertex lookup" <| fun _ ->
+            let g = load_undirected_test_graph
+            let v1 = Graph.vertexFromId g (VertexId 1)
+            v1.Identifier |> should equal (VertexId 1)
+
+        testCase "vert lookup with zero or less id throws " <| fun _ ->            
+            let g = load_undirected_test_graph
+            (fun () -> Graph.vertexFromId g (VertexId 0) |> ignore)
+                |> should throw typeof<System.Exception>
+
+        testCase "vert lookup with out of range id throws" <| fun _ ->
+            let g = load_undirected_test_graph
+            (fun () -> Graph.vertexFromId g (VertexId 99) |> ignore)
+                |> should throw typeof<System.IndexOutOfRangeException>
+                
+        testCase "vertices sequence is 1 based" <| fun _ ->
+            let g = load_undirected_test_graph
+            let verts = Graph.verticesSeq g
+                        |> Array.ofSeq 
+            verts |> Array.exists (fun vertex -> vertex.Identifier.Id = 0) 
+                  |> should be False
+    ]
+
+[<Tests>]
+let generationTests = 
+    testList "Graph Generation" [
+        testCase "Serialized header parsing" <| fun _ ->
+            Generation.extractHeader "1 2" |> should equal (1, 2)
+
+        testCase "Header parsing blows up on wrong number of inputs" <| fun _ ->
+            (fun () -> Generation.extractHeader "1 2 3" |> ignore) 
+                |> should throw typeof<System.Exception>
+
+        testCase "Header parsing blows up if cannot parse to numbers" <| fun _ ->
+            (fun () -> Generation.extractHeader "a b" |> ignore) 
+                |> should throw typeof<System.FormatException>
+
+        testCase "Vertex Id pair parsing" <| fun _ ->
+            Generation.extractVertexIdPair "1 2" |> should equal (VertexId 1, VertexId 2)
+
+        testCase "Vertex Id pair parsing blows if cannot parse numbers" <| fun _ ->
+            (fun () -> Generation.extractVertexIdPair "a b" |> ignore) 
+                |> should throw typeof<System.FormatException>
+
+        testCase "Vertex Id parsing blows up on wrong number of inputs" <| fun _ ->
+            (fun () -> Generation.extractVertexIdPair "1 2 3" |> ignore) 
+                |> should throw typeof<System.Exception>
+                        
+        testCase "read undirected graph works" <| fun _ ->
+            let isDirected = false
+            let g = Generation.readGraph (test_graph_file "undirected_graph.txt") isDirected
+            g.VerticesCount |> should equal 4
+            g.EdgesCount |> should equal 5
+            g.IsDirected |> should be False
+            let adjacents = 
+                neighbourIdNumbers g 
+            adjacents 1 |> should equal [2; 4]
+            adjacents 2 |> should equal [1; 3; 4]
+            adjacents 3 |> should equal [2; 4]
+            adjacents 4 |> should equal [1; 2; 3]
+
+        testCase "read directed graph works" <| fun _ ->
+            let isDirected = true
+            let g = Generation.readGraph (test_graph_file "directed_graph.txt") isDirected
+            g.VerticesCount |> should equal 5
+            g.EdgesCount |> should equal 8
+            g.IsDirected |> should be True
+            let adjacents = 
+                neighbourIdNumbers g 
+            adjacents 1 |> should equal [2]
+            adjacents 2 |> should equal [5]
+            adjacents 3 |> should equal [1; 4]
+            adjacents 4 |> should equal [3]
+            adjacents 5 |> should equal [1; 3; 4]
+
+        // Malicious / incorrect vertex numbers not currently cleanly handled:
+        // - vertexIds out of range
+        // - zero based indexing (we use 1-based)
+    ]   
+
+[<Tests>]
+let visualisationTests = 
+    testList "dot file language " [
+        testCase "undirected graph" <| fun _ ->
+            // match each line but strip leading/trailing whitespace
+            "graph {
+                1 -- 2
+                1 -- 4
+                2 -- 3
+                2 -- 4
+                3 -- 4
+            }"
+            |> ignore
+
+        testCase "directed graph" <| fun _ ->
+            "digraph {
+                1 -> 2
+                2 -> 5
+                3 -> 1
+                3 -> 4
+                4 -> 3
+                5 -> 1
+                5 -> 3
+                5 -> 4
+            }"        
+            |> ignore
+    ]
+    
+
+// EXAMPLES //////////////////////////////////////////////////////////////////////////////////////////////////////
+let fsCheckConfigOverride = { FsCheck.Config.Default with MaxTest = 10000 }
 let testExamples = 
     testList "test list example" [
         
@@ -84,7 +228,9 @@ let testExamples =
               a * (b + c) = a * b + a * c
 
     ]
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
 [<EntryPoint>]
 let main args =
-    run testExamples
+    defaultMainThisAssembly args
+    
