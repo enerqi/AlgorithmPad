@@ -6,6 +6,7 @@
 open Fake
 open Fake.Git
 open Fake.AssemblyInfoFile
+open Fake.ProcessTestRunner
 open Fake.ReleaseNotesHelper
 open Fake.UserInputHelper
 open System
@@ -48,7 +49,7 @@ let tags = "Graphs DataStructures"
 let solutionFile  = "AlgorithmPad.sln"
 
 // Pattern specifying assemblies to be tested using NUnit
-let testAssemblies = "tests/**/bin/Release/*Tests*.dll"
+let testAssemblies = "tests/**/bin/Release/*Tests*.exe"
 
 // Git configuration (used for publishing documentation in gh-pages branch)
 // The profile where the project is posted
@@ -56,7 +57,7 @@ let gitOwner = "enerqi"
 let gitHome = sprintf "%s/%s" "https://github.com" gitOwner
 
 // The name of the project on GitHub
-let gitName = "Graphs"
+let gitName = "AlgorithmPad"
 
 // The url for the raw files hosted
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.githubusercontent.com/enerqi"
@@ -144,11 +145,12 @@ Target "Build" (fun _ ->
 
 Target "RunTests" (fun _ ->
     !! testAssemblies
-    |> NUnit (fun p ->
-        { p with
-            DisableShadowCopy = true
-            TimeOut = TimeSpan.FromMinutes 20.
-            OutputFile = "TestResults.xml" })
+    |> Seq.map (fun filePath ->
+        RunConsoleTest ProcessTestRunnerDefaults filePath "")
+    |> Seq.iter (fun testMessage -> 
+        if Option.isSome testMessage then 
+            failwith testMessage.Value
+        )
 )
 
 #if MONO
