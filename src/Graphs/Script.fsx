@@ -72,3 +72,4 @@ let s_comps = Algorithms.stronglyConnectedComponents g_scc |> Option.get
 makeShowGraphViz rev_scc "reverse_strong_components"
 makeShowGraphViz g_scc "strong_components"
 makeShowGraphViz g_dag "dag"
+makeShowGraphViz g_undir "undir"

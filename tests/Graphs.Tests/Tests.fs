@@ -36,10 +36,36 @@ module private TestUtils =
         |> Array.ofSeq
         |> Array.sort
 
+    let inline factorial (n: int): bigint = 
+        if n < 0 then 
+            failwith "negative faculty"  
+                  
+        let rec fact (n: bigint) (acc: bigint) =
+            if n = 1I then 
+                acc
+            else 
+                fact (n - 1I) (acc * n)
+
+        fact (bigint(n)) 1I
+        
+    let ``n choose k combinations count`` n k = 
+        (factorial n) / ((factorial k) * (factorial(n-k)))
+
+    let n_choose_k n k = 
+        let rec choose lo  =
+            function
+                |0 -> [[]]
+                |i -> [for j=lo to (Array.length n)-1 do
+                            for ks in choose (j+1) (i-1) do
+                            yield n.[j] :: ks ]
+            in choose 0 k  
+                      
+ 
 open TestUtils
 
 [<Tests>]
 let graphTypeTests = 
+
     testList "Graph ADT" [
         testCase "vertex lookup" <| fun _ ->
             let g = load_undirected_test_graph
@@ -66,6 +92,7 @@ let graphTypeTests =
 
 [<Tests>]
 let generationTests = 
+
     testList "Graph Generation" [
         testCase "Serialized header parsing" <| fun _ ->
             Generation.extractHeader "1 2" |> should equal (1, 2)
@@ -123,20 +150,31 @@ let generationTests =
 
 [<Tests>]
 let visualisationTests = 
+    
+    let perLineWhitespaceTrim (s: string) = 
+        s.Split('\n') 
+        |> Array.map (fun ss -> ss.Trim())
+        |> String.concat "\n"
+    
+    let checkDotLanguage dotString expectedDotString = 
+        perLineWhitespaceTrim dotString |> should equal (perLineWhitespaceTrim expectedDotString)                    
+
     testList "dot file language " [
         testCase "undirected graph" <| fun _ ->
             // match each line but strip leading/trailing whitespace
-            "graph {
+            let expected = "graph {
                 1 -- 2
                 1 -- 4
                 2 -- 3
                 2 -- 4
                 3 -- 4
             }"
-            |> ignore
+            let g = load_undirected_test_graph
+            let v = Visualisation.toDotGraphDescriptionLanguage g
+            checkDotLanguage v expected            
 
         testCase "directed graph" <| fun _ ->
-            "digraph {
+            let expected = "digraph {
                 1 -> 2
                 2 -> 5
                 3 -> 1
@@ -146,7 +184,45 @@ let visualisationTests =
                 5 -> 3
                 5 -> 4
             }"        
-            |> ignore
+            let g = load_directed_test_graph
+            let v = Visualisation.toDotGraphDescriptionLanguage g
+            checkDotLanguage v expected
+    ]
+
+
+[<Tests>]
+let algorithmTests = 
+
+    let undirectedVertexCombinations (vertexIdNumbers: int array) = 
+        let extract_pair list = 
+            match list with 
+            | a :: b :: _ -> (a, b)
+            | _ -> failwith "logic error, not a pair"
+        let pairs_directed = 
+            n_choose_k vertexIdNumbers 2
+            |> List.map extract_pair
+        let pairs_reverse_direction = 
+            pairs_directed
+            |> List.map (fun (a, b) -> (b, a)) 
+                                               
+        pairs_directed @ pairs_reverse_direction
+        |> List.map (fun (a, b) -> 
+            (VertexId a, VertexId b))        
+        |> Array.ofList
+
+    let uniqueVertexIds g = 
+        Graph.verticesSeq g
+        |> Array.ofSeq 
+        |> Array.map (fun v -> v.Identifier)
+
+    testList "algorithms" [
+        testCase "pathExists dfs v1 -> v2" <| fun _ ->
+            let g = load_undirected_test_graph
+            let idNums = uniqueVertexIds g |> Array.map (fun vId -> vId.Id)
+            
+            // This undirected graph has a path between all vertices
+            for (v1, v2) in undirectedVertexCombinations idNums do                 
+                Algorithms.pathExists g v1 v2 |> should be True
     ]
     
 
