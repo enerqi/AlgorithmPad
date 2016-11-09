@@ -160,7 +160,7 @@ module Algorithms =
                 
             componentGroups
 
-        reverseDirectedGraph graph |> Option.map findComponents
+        in reverseDirectedGraph graph |> Option.map findComponents
 
     let topologicalOrdering dag = 
         // Read off the reverse post order numbers        

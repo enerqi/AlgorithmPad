@@ -1,13 +1,14 @@
 ﻿namespace Graphs
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Graph = 
 
-    let vertexFromId graph (v: VertexId) =
-        if v.Id > 0 then 
-            graph.Vertices.[v.Id]
+    let vertexFromId graph (v: VertexId) : GraphResult<Vertex> =
+        if v.Id > 0 && v.Id < graph.Vertices.Length then 
+            Ok graph.Vertices.[v.Id]
         else 
-            failwith "<= zero is an invalid vertex id"
-
-    let verticesSeq graph = 
+            Error <| sprintf "Invalid vertex Id: %A" v
+            
+    let verticesSeq graph : seq<Vertex> = 
         Seq.ofArray graph.Vertices |> Seq.skip 1
 
