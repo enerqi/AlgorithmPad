@@ -81,5 +81,6 @@ module Generation =
 
     /// Parse a line-oriented string representation from a file to create a graph
     let readGraphFromFile filePath isDirected = 
+        // try? makeGraphVisualisation try? Need exception capturing
         let dataLines = File.ReadLines(filePath)
         readGraph dataLines isDirected 

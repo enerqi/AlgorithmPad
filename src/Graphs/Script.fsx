@@ -28,7 +28,7 @@ let shellOpenFileWithDefaultApplication fileName =
     // it's really only the start up cost of cmd.exe that we are blocked on.
     Fake.ProcessHelper.ExecProcess setupProcess (TimeSpan.FromSeconds 2.0) 
 
-let makeShowGraphViz (graph: Graph) vizName = 
+let makeShowGraphViz vizName (graph: Graph)  = 
     let tryOpenVizFile fileName = 
         match fileName with
         | Some(f) -> shellOpenFileWithDefaultApplication f |> ignore
@@ -57,20 +57,19 @@ let g_scc = Generation.readGraphFromFile ssc_file true
 let linear_file = test_graph_file "linearly_ordered_graph.txt"
 let g_linear = Generation.readGraphFromFile linear_file true
 
-Algorithms.reverseDirectedGraph g_dag
-Algorithms.isDAG g_dag
-Algorithms.dfsPrePostOrderNumbers g_dag
-Algorithms.edgesSet g_dag
-Algorithms.stronglyConnectedComponents g_dag
-Algorithms.topologicalOrdering g_dag
+Result.map Algorithms.reverseDirectedGraph g_dag
+Result.map Algorithms.isDAG g_dag
+Result.map Algorithms.dfsPrePostOrderNumbers g_dag
+Result.map Algorithms.edgesSet g_dag
+Result.map Algorithms.stronglyConnectedComponents g_dag
+Result.map Algorithms.topologicalOrdering g_dag
 
-Visualisation.toDotGraphDescriptionLanguage g_undir
+Result.map Visualisation.toDotGraphDescriptionLanguage g_undir
 
-let rev_scc = Algorithms.reverseDirectedGraph g_scc |> Option.get
-let s_comps = Algorithms.stronglyConnectedComponents g_scc |> Option.get
+let rev_scc = g_scc |> Result.map (Algorithms.reverseDirectedGraph >> Option.get)
+let s_comps = g_scc |> Result.map (Algorithms.stronglyConnectedComponents >> Option.get)
 
-
-makeShowGraphViz rev_scc "reverse_strong_components"
-makeShowGraphViz g_scc "strong_components"
-makeShowGraphViz g_dag "dag"
-makeShowGraphViz g_undir "undir"
+rev_scc |> Result.map (makeShowGraphViz "reverse_strong_components")
+g_scc   |> Result.map (makeShowGraphViz  "strong_components")
+g_dag   |> Result.map (makeShowGraphViz "dag")
+g_undir |> Result.map (makeShowGraphViz "undir")

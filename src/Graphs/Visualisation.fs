@@ -9,6 +9,7 @@ module Visualisation =
 
     open Algorithms 
 
+    /// Transform a graph to a string that is a valid dot graph description language of it
     let toDotGraphDescriptionLanguage (graph: Graph) = 
         let descriptionOpen = 
             if graph.IsDirected then
@@ -37,12 +38,14 @@ module Visualisation =
         |> String.concat "\n"
 
 
+    /// Run the external 'dot' process to generate a graph image file
+    /// Returns a Result of the image path or Error if creation failed
     let makeGraphVisualisation dotDescription outFilePathNoExtension = 
         
         let outDir = Path.GetDirectoryName(outFilePathNoExtension)
 
         if not (Directory.Exists outDir) then 
-            failwith <| sprintf "Directory of the output file does not exist: %s" outDir
+            Error <| sprintf "Directory of the output file does not exist: %s" outDir
         
         let dotTempFileName = Path.GetTempFileName()
         File.WriteAllText(dotTempFileName, dotDescription)
