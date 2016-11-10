@@ -3,6 +3,9 @@
 [<AutoOpen>]
 module DomainTypes = 
 
+    type ErrorString = string
+    type GraphResult<'TSuccess> = Result<'TSuccess, ErrorString>
+
     type VertexId = 
         struct
             val Id: int
@@ -34,6 +37,4 @@ module DomainTypes =
     }
 
     type internal TwoColouring = Red | Green | Uncoloured
-
-    type ErrorString = string
-    type GraphResult<'TSuccess> = Result<'TSuccess, ErrorString> 
+   

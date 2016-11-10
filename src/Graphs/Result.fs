@@ -30,29 +30,3 @@ module Result =
         match inp with 
         | Error e -> Error e 
         | Ok x -> f x
-
-    
-    //---------- Extra result functions not guaranteed for the 4.1 API
-    
-    // If the wrapped function is a success and the given result is a success the function is applied on the value. 
-    // Otherwise the exisiting error is propagated.
-    let inline apply wrappedFunction result = 
-        match wrappedFunction, result with
-        | Ok(f), Ok(x) -> Ok(f x)
-        | Error e, Ok(_) -> Error(e)
-        | Ok(_), Error e -> Error(e)
-        | Error e, Error e2 -> Error e // arbitrary, maybe the result type should use lists?
-
-    // Lifts a function into a Result container and applies it on the given result.
-    let inline lift f result = apply (Ok f) result
-
-    // Collects a sequence of Results and accumulates their values.
-    // If the sequence contains an error the error will be propagated.
-    let inline collect xs = 
-        Seq.fold (fun result next -> 
-            match result, next with
-            | Ok(a), Ok(rs) -> Ok(a :: rs)
-            | Ok(_), Error e 
-            | Error e, Ok(_) -> Error e
-            | Error e, Error e2 -> (Error e)) (ok []) xs
-        |> lift List.rev

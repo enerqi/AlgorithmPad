@@ -19,7 +19,6 @@ module Generation =
             
 
     /// Parse a line-oriented string representation to create a graph
-    /// File format:
     ///
     /// Line 1: n (#vertices) m (#edges)
     ///         vertices use 1 based indices, 1 to n
@@ -30,56 +29,55 @@ module Generation =
         
         let header, edges = Seq.head dataLines, Seq.tail dataLines
         
-        // Mutable datastructures + functional style Result type error handling maybe a 
-        // little painful to code...
-        let verticesAndEdgesCount: GraphResult<int * int> = extractHeader header
-        let vertCount headerData: GraphResult<int> = 
-            Result.map (fun (vCount, _) -> vCount) headerData
-        let edgeCount headerData: GraphResult<int> = 
-            Result.map (fun (_, eCount) -> eCount) headerData 
+        // Mutable datastructures + functional style Result type error handling is a 
+        // little painful/weird to code mixing pipelining with mutation.
+        // We use Result.map repeatedly to collect all the data needed to create the graph
+        // We could create multiple Results - one for vertex/edge counts, one for edges etc.
+        // but we would have to collect the multiple Results into one and something like 
+        // Result.collect is not definitely in the F# 4.1 API at the moment.
+        // It looks prettier pushing data through one pipeline aswell
 
-        // verts and edges count
-        // -> verts, edges, vertexArray
-        // -> verts, edges, vertexArray, edgeVertexPairs
-        // -> verts, edges, vertexArray, edgeVertexPairs ??? going through the edges...
-
-        let makeVertexArray verticesCount : Vertex [] = 
+        let withVertexArray (verticesCount, edgesCount) : (int * int * Vertex []) = 
             // The entry at index 0 will be ignored. Keeping it saves on offset calculations.
             // 1-based indices. F# inclusive [x..y]
-            [|for vIndex in [0..verticesCount] do
-                      yield { Identifier = VertexId vIndex;
-                              Neighbours = new ResizeArray<VertexId>() } |]
-        
-        let verts: GraphResult<Vertex []> = 
-            let countResult = vertCount verticesAndEdgesCount 
-            Result.map makeVertexArray countResult
-                   
-        let edgeVertexPairs: seq<GraphResult<VertexId * VertexId>> = 
-            edges |> Seq.map extractVertexIdPair    
+            let vertexArray = [|for vIndex in [0..verticesCount] do
+                                yield { Identifier = VertexId vIndex;
+                                        Neighbours = new ResizeArray<VertexId>() } |]
+            (verticesCount, edgesCount, vertexArray)
 
-        let addAllEdges vertices = 
+        let withEdgeVertexPairs (verticesCount, edgesCount, vertexArray) : (int * int * Vertex [] * seq<GraphResult<VertexId * VertexId>>) = 
+            let pairs = edges |> Seq.map extractVertexIdPair
+            (verticesCount, edgesCount, vertexArray, pairs)        
+            
+        // If we want to expose the vertices that did not parse as errors then we 
+        // would have to return a result and use Result.bind addAllEdgesToVertexArray
+        let addAllEdgesToVertexArray (verticesCount, edgesCount, vertexArray, pairs) = 
             let addEdge (verticesArray: Vertex[]) (v1: VertexId) (v2: VertexId) = 
                 verticesArray.[v1.Id].Neighbours.Add(v2)
                 // v2 -> v1 for bi-directionality
                 if not isDirected then 
-                    verticesArray.[v2.Id].Neighbours.Add(v1)
+                    verticesArray.[v2.Id].Neighbours.Add(v1)           
+                    
+            for pairResult in pairs do
+                 match pairResult with 
+                 | Ok (v1, v2) -> addEdge vertexArray v1 v2                                
+                 | Error e -> printfn "Ignoring vertex pair that could not parse: %s" e        
             
-            for startEndVertPairResult in edgeVertexPairs do
-                 match startEndVertPairResult with 
-                 | Ok (v1, v2) ->
-                    addEdge vertices v1 v2                                
-                 | Error e -> printfn "Ignoring vertex pair that could not parse: %s" e
+            (verticesCount, edgesCount, vertexArray, pairs)     
+           
+        let toGraph (verticesCount, edgesCount, vertexArray, _) = 
+            { VerticesCount = verticesCount; 
+              IsDirected = isDirected;
+              EdgesCount = edgesCount;
+              Vertices = vertexArray }              
 
-        
-        addAllEdges (if not error verts)   
-        match (vertCount headerData, edgeCount headerData, verts) with 
-        ...
-   
-        { VerticesCount = verticesCount; 
-          IsDirected = isDirected;
-          EdgesCount = edgesCount;
-          Vertices = verts }
-        
+        header
+        |> extractHeader        
+        |> Result.map withVertexArray
+        |> Result.map withEdgeVertexPairs
+        |> Result.map addAllEdgesToVertexArray  // side effecting
+        |> Result.map toGraph
+
 
     /// Parse a line-oriented string representation from a file to create a graph
     let readGraphFromFile filePath isDirected = 
