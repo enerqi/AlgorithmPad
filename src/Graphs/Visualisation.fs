@@ -11,7 +11,7 @@ module Visualisation =
     open Chessie.ErrorHandling
     open Algorithms 
 
-    /// Transform a graph to a string that is a valid dot graph description language of it
+    /// Transform a graph to its dot graph description language string
     let toDotGraphDescriptionLanguage (graph: Graph) = 
         let descriptionOpen = 
             if graph.IsDirected then

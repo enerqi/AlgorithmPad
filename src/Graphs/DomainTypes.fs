@@ -6,12 +6,14 @@ module DomainTypes =
     open Chessie.ErrorHandling
     open System
 
+    /// Type safe wrapper of vertex integer id
     type VertexId = 
         struct
             val Id: int
             new(id: int) = {Id = id}
         end
 
+    /// Vertex (Node) in a graph using an adjacency list representation
     type Vertex = {    
         Identifier: VertexId
         Neighbours: ResizeArray<VertexId>
@@ -25,12 +27,14 @@ module DomainTypes =
         EdgesCount: int
     }
 
+    /// Type safe wrapper of distance integer values
     type Distance = 
         struct 
             val Distance: uint32
             new(d: uint32) = {Distance = d}
         end
 
+    /// Breadth first search results from a source vertex
     type BFS = {
         Source: VertexId
         ShortestPathDistances: Distance option []

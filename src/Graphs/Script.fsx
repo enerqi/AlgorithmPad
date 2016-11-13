@@ -13,6 +13,8 @@ open System
 open System.Collections.Generic 
 open System.IO
 
+open Chessie.ErrorHandling
+
 open Graphs
 
 
@@ -36,7 +38,7 @@ let makeShowGraphViz vizName (graph: Graph)  =
         | _ -> ()
     Visualisation.toDotGraphDescriptionLanguage graph
     |> Visualisation.makeGraphVisualisation <| Path.Combine(outdir, vizName)
-    |> tryOpenVizFile
+    |> lift tryOpenVizFile
 
 let home = Environment.GetEnvironmentVariable("HOME")
 let test_graph_file file_name = 
