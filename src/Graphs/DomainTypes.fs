@@ -2,9 +2,9 @@
 
 [<AutoOpen>]
 module DomainTypes = 
-
-    type ErrorString = string
-    type GraphResult<'TSuccess> = Result<'TSuccess, ErrorString>
+   
+    open Chessie.ErrorHandling
+    open System
 
     type VertexId = 
         struct
@@ -17,8 +17,9 @@ module DomainTypes =
         Neighbours: ResizeArray<VertexId>
     }  
 
+    /// Main Graph datastructure type implemented with mutable Vertex structures
     type Graph = {
-        Vertices: Vertex array // mutable fixed sized .net type even though the ref is immutable
+        Vertices: Vertex array 
         IsDirected: bool
         VerticesCount: int
         EdgesCount: int
@@ -35,6 +36,19 @@ module DomainTypes =
         ShortestPathDistances: Distance option []
         ShortestPathTree: VertexId option []
     }
+    
+    type GraphAccessFailure = 
+        | InvalidVertexId of VertexId
+
+    type GraphFailure =
+        | GraphAccessFailure of GraphAccessFailure
+        | FileAccessFailure of Exception
+        | ParsingFailure of string
+        | VisualisationFailure of Exception
+
+    /// Main functional style error handling result type used throughout the Graphs namespace
+    type GraphResult<'TSuccess> = Result<'TSuccess, GraphFailure>  
+
 
     type internal TwoColouring = Red | Green | Uncoloured
    

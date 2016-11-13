@@ -4,18 +4,20 @@ open System.IO
 
 module Generation = 
 
-    /// Transform a pair string of integers e.g. "1 2" and return a tuple of the integer values
+    open Chessie.ErrorHandling
+
+    /// Transform a pair string of integers e.g. "1 2" and return a result of the tuple of the integer values
     let extractHeader (header: string) : GraphResult<int* int> = 
         header.Split() |> Array.map int |> fun xs -> 
             match xs with 
-            | [|vC; eC|] -> Ok (vC, eC)
-            | _ -> Error <| sprintf "Failed to extract header pair fom string: %s" header
+            | [|vC; eC|] -> ok (vC, eC)
+            | _ -> fail (ParsingFailure <| sprintf "Failed to extract header pair fom string: %s" header)
   
-    /// Transform a pair string of integers e.g. "1 2" and return a tuple of the VertexId values
+    /// Transform a pair string of integers e.g. "1 2" and return result of the tuple of the VertexId values
     let extractVertexIdPair (pairString: string) : GraphResult<VertexId * VertexId> = 
         match pairString.Split() with
-        | [|v1; v2|] -> Ok (VertexId (int v1), VertexId (int v2))
-        | _ -> Error <| sprintf "Failed to extract pair from vertex pair string: %s" pairString
+        | [|v1; v2|] -> ok (VertexId (int v1), VertexId (int v2))
+        | _ -> fail (ParsingFailure <| sprintf "Failed to extract pair from vertex pair string: %s" pairString)
             
 
     /// Parse a line-oriented string representation to create a graph
@@ -25,7 +27,7 @@ module Generation =
     /// Line (2 to m-1): edge u v with id (>= 1 and <= n) - directed or undirected according to the problem.
     ///                | edge u v w - includes the weight 
     /// For now the graph should be simple - no self loops nor parallel edges.
-    let readGraph (dataLines: seq<string>) isDirected : GraphResult<Graph> = 
+    let readGraph isDirected (dataLines: seq<string>) : GraphResult<Graph> = 
         
         let header, edges = Seq.head dataLines, Seq.tail dataLines
         
@@ -49,9 +51,8 @@ module Generation =
             let pairs = edges |> Seq.map extractVertexIdPair
             (verticesCount, edgesCount, vertexArray, pairs)        
             
-        // If we want to expose the vertices that did not parse as errors then we 
-        // would have to return a result and use Result.bind addAllEdgesToVertexArray
-        let addAllEdgesToVertexArray (verticesCount, edgesCount, vertexArray, pairs) = 
+        let addAllEdgesToVertexArray ((_, _, vertexArray, pairs: seq<GraphResult<VertexId * VertexId>>), _) = 
+
             let addEdge (verticesArray: Vertex[]) (v1: VertexId) (v2: VertexId) = 
                 verticesArray.[v1.Id].Neighbours.Add(v2)
                 // v2 -> v1 for bi-directionality
@@ -60,10 +61,9 @@ module Generation =
                     
             for pairResult in pairs do
                  match pairResult with 
-                 | Ok (v1, v2) -> addEdge vertexArray v1 v2                                
-                 | Error e -> printfn "Ignoring vertex pair that could not parse: %s" e        
-            
-            (verticesCount, edgesCount, vertexArray, pairs)     
+                 | Ok ((v1, v2), _) -> addEdge vertexArray v1 v2                                
+                 | Bad e -> printfn "Ignoring vertex pair that could not parse: %A" e        
+                        
            
         let toGraph (verticesCount, edgesCount, vertexArray, _) = 
             { VerticesCount = verticesCount; 
@@ -71,16 +71,16 @@ module Generation =
               EdgesCount = edgesCount;
               Vertices = vertexArray }              
 
+        
         header
         |> extractHeader        
-        |> Result.map withVertexArray
-        |> Result.map withEdgeVertexPairs
-        |> Result.map addAllEdgesToVertexArray  // side effecting
-        |> Result.map toGraph
+        |> lift withVertexArray
+        |> lift withEdgeVertexPairs
+        |> successTee addAllEdgesToVertexArray // side effecting
+        |> lift toGraph
 
 
     /// Parse a line-oriented string representation from a file to create a graph
-    let readGraphFromFile filePath isDirected = 
-        // try? makeGraphVisualisation try? Need exception capturing
-        let dataLines = File.ReadLines(filePath)
-        readGraph dataLines isDirected 
+    let readGraphFromFile (isDirected: bool) (filePath:string) : GraphResult<Graph> = 
+        tryF (fun _ -> File.ReadLines(filePath)) FileAccessFailure
+        >>= readGraph isDirected

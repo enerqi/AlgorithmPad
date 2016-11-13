@@ -1,6 +1,7 @@
 #I "../../packages"
 #r @"Streams/lib/net45/Streams.dll" 
 #r @"FAKE/tools/FakeLib.dll"
+#r @"Chessie/lib/net40/Chessie.dll"
 #load "Result.fs"
 #load "DomainTypes.fs"
 #load "Graph.fs"
@@ -43,19 +44,19 @@ let test_graph_file file_name =
     Path.Combine(dir, file_name) |> Path.GetFullPath
 
 let dag_file = test_graph_file "directed_graph.txt"
-let g_dag = Generation.readGraphFromFile dag_file true
+let g_dag = Generation.readGraphFromFile true dag_file
 
 let undirected_file = test_graph_file "undirected_graph.txt"
-let g_undir = Generation.readGraphFromFile undirected_file false
+let g_undir = Generation.readGraphFromFile false undirected_file 
 
 let maze_graph_file = Path.Combine(home, "dev/rust/mazes/le-graph.text")
-let g_maze = Generation.readGraphFromFile maze_graph_file false
+let g_maze = Generation.readGraphFromFile false maze_graph_file 
 
 let ssc_file = test_graph_file "strong_components_graph.txt"
-let g_scc = Generation.readGraphFromFile ssc_file true
+let g_scc = Generation.readGraphFromFile true ssc_file
 
 let linear_file = test_graph_file "linearly_ordered_graph.txt"
-let g_linear = Generation.readGraphFromFile linear_file true
+let g_linear = Generation.readGraphFromFile true linear_file 
 
 Result.map Algorithms.reverseDirectedGraph g_dag
 Result.map Algorithms.isDAG g_dag

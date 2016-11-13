@@ -1,6 +1,7 @@
 FSharp.Core
 Streams
 FAKE
+Chessie
 group Test
 Fuchu
 FsUnit
