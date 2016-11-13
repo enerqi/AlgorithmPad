@@ -42,7 +42,7 @@ module Visualisation =
 
     /// Run the external 'dot' process to generate a graph image file
     /// Returns a Result of the image path or Error if creation failed
-    let makeGraphVisualisation dotDescription outFilePathNoExtension = 
+    let makeGraphVisualisation dotDescription outFilePathNoExtension: GraphResult<string> = 
 
         let getOutFileDirectory = 
             tryF (fun _ -> Path.GetDirectoryName(outFilePathNoExtension)) FileAccessFailure

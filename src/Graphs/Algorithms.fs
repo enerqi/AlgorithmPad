@@ -1,32 +1,44 @@
 namespace Graphs
 
 open System.Collections.Generic 
+open System.Collections
 open Nessos.Streams
 
 module Algorithms =          
 
+    open Chessie.ErrorHandling
     open Graph   
 
-    let pathExists graph (v1: VertexId) (v2: VertexId) = 
-        let visitedSet = new HashSet<VertexId>() 
-        
-        let rec explore (v: VertexId) =             
-            visitedSet.Add(v) |> ignore            
-            let vertex = vertexFromId graph v
-            for neighbour in vertex.Neighbours do 
-                if not (visitedSet.Contains(neighbour)) then 
-                    explore neighbour // not tail recursive!
+    type VisitedSet(graph: Graph) = 
+        let flags = new BitArray(int32 graph.Vertices.Length)
+        member this.Contains(vertexId: VertexId) = flags.Get(int32 vertexId.Id)
+        member this.Insert(vertexId: VertexId) = flags.Set(int32 vertexId.Id, true)
+
+            
+    let pathExists graph (v1: VertexId) (v2: VertexId) : GraphResult<bool> = 
+        let visitedSet = VisitedSet(graph)
+                
+        let rec explore (v: VertexId): GraphResult<unit> =             
+            visitedSet.Insert(v)
+            trial {
+                let! vertex = vertexFromId graph v            
+                for neighbour in vertex.Neighbours do 
+                    if not (visitedSet.Contains(neighbour)) then 
+                        explore neighbour // not tail recursive!
+                
+                return ()
+            } 
         
         explore v1
         visitedSet.Contains(v2)
             
     let connectedComponents graph =              
-        let visitedSet = new HashSet<VertexId>()
+        let visitedSet = VisitedSet(graph)
         let mutable componentId = 0
         let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
         
         let rec explore (v: VertexId) = 
-            visitedSet.Add(v) |> ignore
+            visitedSet.Insert(v) |> ignore
             componentGroups.[componentId].Add(v)
             let vertex = vertexFromId graph v
             for neighbour in vertex.Neighbours do
@@ -69,14 +81,14 @@ module Algorithms =
         //   This involves checking whether a new node exists in the current dfs stack.
         
         let checkDAG graph =
-            let visitedSet = new HashSet<VertexId>() // or make a BitArray
+            let visitedSet = VisitedSet(graph) // or make a BitArray
             let dfsRecursionStackVertexIds: bool[] = Array.create (graph.VerticesCount + 1) false
             
             let rec explore (vertexId: VertexId) =  // returns true if a back-edge is found                
                 dfsRecursionStackVertexIds.[vertexId.Id] || visitThisThenExploreChildren vertexId
 
             and visitThisThenExploreChildren (vertexId: VertexId) = 
-                visitedSet.Add(vertexId) |> ignore                
+                visitedSet.Insert(vertexId) |> ignore                
                 dfsRecursionStackVertexIds.[vertexId.Id] <- true
 
                 let vertex = vertexFromId graph vertexId                    
@@ -98,14 +110,14 @@ module Algorithms =
         graph.IsDirected && checkDAG graph
 
     let dfsPrePostOrderNumbers graph = 
-        let visitedSet = new HashSet<VertexId>()
+        let visitedSet = VisitedSet(graph)
         let visitOrderNumbers = Array.create (graph.VerticesCount + 1) (0, 0)
         let mutable visitNumber = 0
 
         let rec explore (vertexId: VertexId) = 
             
             let preOrderVisitNumber = visitNumber
-            visitedSet.Add(vertexId) |> ignore
+            visitedSet.Insert(vertexId) |> ignore
             visitOrderNumbers.[vertexId.Id] <- (preOrderVisitNumber, 0)
             visitNumber <- visitNumber + 1
 
@@ -140,11 +152,11 @@ module Algorithms =
                 |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
                 |> Stream.toArray
 
-            let visitedSet = new HashSet<VertexId>()
+            let visitedSet = VisitedSet(graph)
             let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
                 
             let rec explore (vertexId: VertexId) (currentComponentGroup: ResizeArray<VertexId>) = 
-                visitedSet.Add(vertexId) |> ignore
+                visitedSet.Insert(vertexId) |> ignore
                 currentComponentGroup.Add(vertexId)
                                                 
                 let vertex = vertexFromId graph vertexId
