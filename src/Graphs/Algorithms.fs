@@ -160,7 +160,7 @@ module Algorithms =
         
     /// Return the strongly connected components of the graph. 
     /// Components are strongly connected when there is a cycle amongst them meaning that they can all reach each other somehow.
-    let stronglyConnectedComponents (graph: Graph) : GraphResult<ResizeArray<ResizeArray<VertexId>> option> = 
+    let stronglyConnectedComponents (graph: Graph) : GraphResult<ResizeArray<ResizeArray<VertexId>>> = 
                 
         let findComponents reverseGraph = 
             // The vertex with the largest dfs post order number is in a source component
@@ -168,35 +168,41 @@ module Algorithms =
             // post order number
             // At that point exploring the graph (not reverse graph) in reverse post order
             // allows us to collect the strongly connected components
-            let reversePostOrderVertices = 
-                dfsPrePostOrderNumbers reverseGraph
-                |> Stream.ofArray
-                |> Stream.mapi (fun index prePostOrderNums -> (VertexId index, prePostOrderNums))
-                |> Stream.skip 1 // ignore the 0 index vertex put in to make 1 based indexing easier                                                           
-                |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
-                |> Stream.toArray
-
+                        
             let visitedSet = VisitedSet(graph)
             let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
                 
-            let rec explore (vertexId: VertexId) (currentComponentGroup: ResizeArray<VertexId>) = 
-                visitedSet.Insert(vertexId) |> ignore
+            let rec explore (vertexId: VertexId) (currentComponentGroup: ResizeArray<VertexId>): GraphResult<unit> = 
+                visitedSet.Insert(vertexId)
                 currentComponentGroup.Add(vertexId)
-                                                
-                let vertex = vertexFromId graph vertexId
-                for neighbourVertexId in vertex.Neighbours do 
-                    if not (visitedSet.Contains(neighbourVertexId)) then 
-                        explore neighbourVertexId currentComponentGroup
-
-            for (vId, _) in reversePostOrderVertices do 
-                if not (visitedSet.Contains(vId)) then 
-                    componentGroups.Add(new ResizeArray<VertexId>())
-                    let newestComponentGroup = componentGroups.[componentGroups.Count - 1]
-                    explore vId newestComponentGroup
+                   
+                trial {
+                    let! vertex = vertexFromId graph vertexId
+                    for neighbourVertexId in vertex.Neighbours do 
+                        if not (visitedSet.Contains(neighbourVertexId)) then 
+                            do! explore neighbourVertexId currentComponentGroup
+                }                             
                 
-            componentGroups
+            trial {
+                let! dfsOrderings = dfsPrePostOrderNumbers reverseGraph
+                let reversePostOrderVertices = 
+                    dfsOrderings
+                    |> Stream.ofArray
+                    |> Stream.mapi (fun index prePostOrderNums -> (VertexId index, prePostOrderNums))
+                    |> Stream.skip 1 // ignore the 0 index vertex put in to make 1 based indexing easier                                                           
+                    |> Stream.sortBy (fun (_, (_, post)) -> -post) // Negative/reverse post 
+                    |> Stream.toArray
 
-        in reverseDirectedGraph graph |> Option.map findComponents
+                for (vId, _) in reversePostOrderVertices do 
+                    if not (visitedSet.Contains(vId)) then 
+                        componentGroups.Add(new ResizeArray<VertexId>())
+                        let newestComponentGroup = componentGroups.[componentGroups.Count - 1]
+                        do! explore vId newestComponentGroup
+
+                return componentGroups
+            }
+
+        in reverseDirectedGraph graph |> findComponents
 
     
     /// Return the topological ordering (source vertices before sink vertices) of a directed acyclic graph
