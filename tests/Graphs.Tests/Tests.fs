@@ -3,6 +3,7 @@ module Graphs.Tests
 open System
 open System.IO
 
+open Chessie.ErrorHandling
 open Graphs
 open Fuchu
 open FsUnit
@@ -19,23 +20,27 @@ module private TestUtils =
 
     let load_undirected_test_graph = 
         let isDirected = false
-        Generation.readGraph (test_graph_file "undirected_graph.txt") isDirected
+        Generation.readGraphFromFile isDirected (test_graph_file "undirected_graph.txt") 
 
     let load_directed_test_graph = 
         let isDirected = true
-        Generation.readGraph (test_graph_file "directed_graph.txt") isDirected
+        Generation.readGraphFromFile isDirected (test_graph_file "directed_graph.txt")
 
     let neighbours graph vertexIdNumber = 
         VertexId vertexIdNumber 
         |> Graph.vertexFromId graph 
-        |> (fun v -> v.Neighbours)
+        |> lift (fun v -> v.Neighbours)
 
     let neighbourIdNumbers graph vertexIdNumber = 
-        neighbours graph vertexIdNumber
-        |> Seq.map (fun vId -> vId.Id)
-        |> Array.ofSeq
-        |> Array.sort
-
+        trial {
+            let! neighbourIds = neighbours graph vertexIdNumber
+            let ns = neighbourIds 
+                     |> Seq.map (fun vId -> vId.Id)
+                     |> Array.ofSeq
+                     |> Array.sort
+            return ns            
+        }
+        
     let inline factorial (n: int): bigint = 
         if n < 0 then 
             failwith "negative faculty"  
@@ -59,6 +64,17 @@ module private TestUtils =
                             for ks in choose (j+1) (i-1) do
                             yield n.[j] :: ks ]
             in choose 0 k  
+
+    let expectOneFailedWith f result = 
+        result |> failed |> should be True
+        match result with 
+        | Bad [e] -> f e
+        | _ -> false        
+
+    let isParsingFailure (gf: GraphFailure) = 
+        match gf with 
+        | ParsingFailure(_) -> true
+        | _ -> false
                       
  
 open TestUtils
@@ -67,85 +83,98 @@ open TestUtils
 let graphTypeTests = 
 
     testList "Graph ADT" [
-        testCase "vertex lookup" <| fun _ ->
-            let g = load_undirected_test_graph
-            let v1 = Graph.vertexFromId g (VertexId 1)
-            v1.Identifier |> should equal (VertexId 1)
+        testCase "vertex lookup" <| fun _ ->            
+            trial {
+                let! g = load_undirected_test_graph
+                let! v1 = Graph.vertexFromId g (VertexId 1)
+                return v1.Identifier
+            }
+            |> returnOrFail |> should equal (VertexId 1)
 
-        testCase "vert lookup with zero or less id throws " <| fun _ ->            
-            let g = load_undirected_test_graph
-            (fun () -> Graph.vertexFromId g (VertexId 0) |> ignore)
-                |> should throw typeof<System.Exception>
+        testCase "vertex lookup with negative id returns GraphAccessFailure " <| fun _ ->            
+            let r = 
+                trial {
+                    let! g = load_undirected_test_graph
+                    return! Graph.vertexFromId g (VertexId -1)
+                }
+            r |> should equal (Bad [GraphAccessFailure (InvalidVertexId (VertexId -1))])
 
-        testCase "vert lookup with out of range id throws" <| fun _ ->
-            let g = load_undirected_test_graph
-            (fun () -> Graph.vertexFromId g (VertexId 99) |> ignore)
-                |> should throw typeof<System.IndexOutOfRangeException>
+        testCase "vertex lookup with out of range id returns GraphAccessFailure " <| fun _ ->
+            trial {
+                let! g = load_undirected_test_graph
+                return! Graph.vertexFromId g (VertexId 999)
+            }
+            |> should equal (Bad [GraphAccessFailure (InvalidVertexId (VertexId 999))])
                 
         testCase "vertices sequence is 1 based" <| fun _ ->
-            let g = load_undirected_test_graph
-            let verts = Graph.verticesSeq g
-                        |> Array.ofSeq 
-            verts |> Array.exists (fun vertex -> vertex.Identifier.Id = 0) 
-                  |> should be False
+            trial {
+                let! g = load_undirected_test_graph
+                let hasVertexWithIdZero = 
+                    Graph.verticesSeq g 
+                    |> Array.ofSeq 
+                    |> Array.exists (fun vertex -> vertex.Identifier.Id = 0) 
+                return hasVertexWithIdZero
+            }            
+            |> returnOrFail |> should be False
     ]
 
 [<Tests>]
 let generationTests = 
-
+    
     testList "Graph Generation" [
         testCase "Serialized header parsing" <| fun _ ->
-            Generation.extractHeader "1 2" |> should equal (1, 2)
+            Generation.extractHeader "1 2" 
+            |> returnOrFail |> should equal (1, 2)
 
-        testCase "Header parsing blows up on wrong number of inputs" <| fun _ ->
-            (fun () -> Generation.extractHeader "1 2 3" |> ignore) 
-                |> should throw typeof<System.Exception>
-
-        testCase "Header parsing blows up if cannot parse to numbers" <| fun _ ->
-            (fun () -> Generation.extractHeader "a b" |> ignore) 
-                |> should throw typeof<System.FormatException>
+        testCase "Header parsing returns ParsingFailure wrong number of inputs" <| fun _ ->
+            Generation.extractHeader "1 2 3" |> expectOneFailedWith isParsingFailure |> should be True
+            
+        testCase "Header parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
+            Generation.extractHeader "a b" |> expectOneFailedWith isParsingFailure |> should be True
 
         testCase "Vertex Id pair parsing" <| fun _ ->
-            Generation.extractVertexIdPair "1 2" |> should equal (VertexId 1, VertexId 2)
+            Generation.extractVertexIdPair "1 2" 
+            |> returnOrFail |> should equal (VertexId 1, VertexId 2)
 
-        testCase "Vertex Id pair parsing blows if cannot parse numbers" <| fun _ ->
-            (fun () -> Generation.extractVertexIdPair "a b" |> ignore) 
-                |> should throw typeof<System.FormatException>
+        testCase "Vertex Id returns ParsingFailure wrong number of inputs" <| fun _ ->
+            Generation.extractVertexIdPair "1 2 3" |> expectOneFailedWith isParsingFailure |> should be True
 
-        testCase "Vertex Id parsing blows up on wrong number of inputs" <| fun _ ->
-            (fun () -> Generation.extractVertexIdPair "1 2 3" |> ignore) 
-                |> should throw typeof<System.Exception>
+        testCase "Vertex Id pair parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
+            Generation.extractVertexIdPair "a b" |> expectOneFailedWith isParsingFailure |> should be True
                         
         testCase "read undirected graph works" <| fun _ ->
             let isDirected = false
-            let g = Generation.readGraph (test_graph_file "undirected_graph.txt") isDirected
-            g.VerticesCount |> should equal 4
-            g.EdgesCount |> should equal 5
-            g.IsDirected |> should be False
-            let adjacents = 
-                neighbourIdNumbers g 
-            adjacents 1 |> should equal [2; 4]
-            adjacents 2 |> should equal [1; 3; 4]
-            adjacents 3 |> should equal [2; 4]
-            adjacents 4 |> should equal [1; 2; 3]
+            trial {
+                let! g = Generation.readGraphFromFile isDirected (test_graph_file "undirected_graph.txt") 
+                g.VerticesCount |> should equal 4
+                g.EdgesCount |> should equal 5
+                g.IsDirected |> should be False
+                let adjacents = 
+                    neighbourIdNumbers g >> returnOrFail
+                adjacents 1 |> should equal [2; 4]
+                adjacents 2 |> should equal [1; 3; 4]
+                adjacents 3 |> should equal [2; 4]
+                adjacents 4 |> should equal [1; 2; 3]
+                return ()
+            }
+            |> returnOrFail
 
         testCase "read directed graph works" <| fun _ ->
             let isDirected = true
-            let g = Generation.readGraph (test_graph_file "directed_graph.txt") isDirected
-            g.VerticesCount |> should equal 5
-            g.EdgesCount |> should equal 8
-            g.IsDirected |> should be True
-            let adjacents = 
-                neighbourIdNumbers g 
-            adjacents 1 |> should equal [2]
-            adjacents 2 |> should equal [5]
-            adjacents 3 |> should equal [1; 4]
-            adjacents 4 |> should equal [3]
-            adjacents 5 |> should equal [1; 3; 4]
-
-        // Malicious / incorrect vertex numbers not currently cleanly handled:
-        // - vertexIds out of range
-        // - zero based indexing (we use 1-based)
+            trial {
+                let! g = Generation.readGraphFromFile isDirected (test_graph_file "directed_graph.txt") 
+                g.VerticesCount |> should equal 5
+                g.EdgesCount |> should equal 8
+                g.IsDirected |> should be True
+                let adjacents = 
+                    neighbourIdNumbers g >> returnOrFail
+                adjacents 1 |> should equal [2]
+                adjacents 2 |> should equal [5]
+                adjacents 3 |> should equal [1; 4]
+                adjacents 4 |> should equal [3]
+                adjacents 5 |> should equal [1; 3; 4]
+            }
+            |> returnOrFail            
     ]   
 
 [<Tests>]
@@ -156,7 +185,7 @@ let visualisationTests =
         |> Array.map (fun ss -> ss.Trim())
         |> String.concat "\n"
     
-    let checkDotLanguage dotString expectedDotString = 
+    let checkDotLanguage expectedDotString dotString = 
         perLineWhitespaceTrim dotString |> should equal (perLineWhitespaceTrim expectedDotString)                    
 
     testList "dot file language " [
@@ -169,9 +198,11 @@ let visualisationTests =
                 2 -- 4
                 3 -- 4
             }"
-            let g = load_undirected_test_graph
-            let v = Visualisation.toDotGraphDescriptionLanguage g
-            checkDotLanguage v expected            
+            trial {
+                let! g = load_undirected_test_graph
+                return Visualisation.toDotGraphDescriptionLanguage g
+            }
+            |> returnOrFail |> checkDotLanguage expected
 
         testCase "directed graph" <| fun _ ->
             let expected = "digraph {
@@ -184,9 +215,11 @@ let visualisationTests =
                 5 -> 3
                 5 -> 4
             }"        
-            let g = load_directed_test_graph
-            let v = Visualisation.toDotGraphDescriptionLanguage g
-            checkDotLanguage v expected
+            trial {
+                let! g = load_directed_test_graph
+                return Visualisation.toDotGraphDescriptionLanguage g
+            }
+            |> returnOrFail |> checkDotLanguage expected
     ]
 
 
@@ -217,16 +250,19 @@ let algorithmTests =
 
     testList "algorithms" [
         testCase "pathExists dfs v1 -> v2" <| fun _ ->
-            let g = load_undirected_test_graph
-            let idNums = uniqueVertexIds g |> Array.map (fun vId -> vId.Id)
-            
-            // This undirected graph has a path between all vertices
-            for (v1, v2) in undirectedVertexCombinations idNums do                 
-                Algorithms.pathExists g v1 v2 |> should be True
+            trial {
+                let! g = load_undirected_test_graph
+                let idNums = uniqueVertexIds g |> Array.map (fun vId -> vId.Id)
+
+                // This undirected graph has a path between all vertices
+                for (v1, v2) in undirectedVertexCombinations idNums do                 
+                    Algorithms.pathExists g v1 v2 |> returnOrFail |> should be True
+            }
+            |> returnOrFail
     ]
     
 
-// EXAMPLES //////////////////////////////////////////////////////////////////////////////////////////////////////
+// Fuchu, FsUnit, Unquote and FsCheck Test library Examples /////////////////////////////
 let fsCheckConfigOverride = { FsCheck.Config.Default with MaxTest = 10000 }
 let testExamples = 
     testList "test list example" [
@@ -304,7 +340,7 @@ let testExamples =
               a * (b + c) = a * b + a * c
 
     ]
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
     
 [<EntryPoint>]
 let main args =
