@@ -37,7 +37,7 @@ module DomainTypes =
             val Distance: uint32
             new(d: uint32) = {Distance = d}
         end    
-
+            
     type GraphFailure =
         | GraphAccessFailure of GraphAccessFailure
         | FileAccessFailure of Exception

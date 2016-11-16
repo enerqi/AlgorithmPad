@@ -8,15 +8,19 @@ module Generation =
 
     /// Transform a pair string of integers e.g. "1 2" and return a result of the tuple of the integer values
     let extractHeader (header: string) : GraphResult<int* int> = 
-        header.Split() |> Array.map int |> fun xs -> 
-            match xs with 
-            | [|vC; eC|] -> ok (vC, eC)
-            | _ -> fail (ParsingFailure <| sprintf "Failed to extract header pair fom string: %s" header)
-  
+        trial {
+            let! nums = tryF (fun _ -> header.Split() |> Array.map int) (string >> ParsingFailure)            
+            let pair = 
+                match nums with 
+                | [|vC; eC|] -> ok (vC, eC)
+                | _ -> fail (ParsingFailure <| sprintf "Failed to extract header pair fom string: %s" header) 
+            return! pair
+        }
+        
     /// Transform a pair string of integers e.g. "1 2" and return result of the tuple of the VertexId values
     let extractVertexIdPair (pairString: string) : GraphResult<VertexId * VertexId> = 
         match pairString.Split() with
-        | [|v1; v2|] -> ok (VertexId (int v1), VertexId (int v2))
+        | [|v1; v2|] -> tryF (fun _ -> (VertexId (int v1), VertexId (int v2))) (string >> ParsingFailure)
         | _ -> fail (ParsingFailure <| sprintf "Failed to extract pair from vertex pair string: %s" pairString)
             
 

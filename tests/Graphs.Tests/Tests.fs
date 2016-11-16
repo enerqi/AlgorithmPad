@@ -65,15 +65,20 @@ module private TestUtils =
                             yield n.[j] :: ks ]
             in choose 0 k  
 
-    let expectOneFailedWith f result = 
+    let expectOneFailedWith predicate result = 
         result |> failed |> should be True
         match result with 
-        | Bad [e] -> f e
+        | Bad [e] -> predicate e
         | _ -> false        
 
     let isParsingFailure (gf: GraphFailure) = 
         match gf with 
         | ParsingFailure(_) -> true
+        | _ -> false
+
+    let isGraphAccessFailure (invalidVertexId: int) result = 
+        match result with 
+        | Bad [GraphAccessFailure (InvalidVertexId vid)] -> vid.Id = invalidVertexId
         | _ -> false
                       
  
@@ -91,20 +96,19 @@ let graphTypeTests =
             }
             |> returnOrFail |> should equal (VertexId 1)
 
-        testCase "vertex lookup with negative id returns GraphAccessFailure " <| fun _ ->            
-            let r = 
-                trial {
-                    let! g = load_undirected_test_graph
-                    return! Graph.vertexFromId g (VertexId -1)
-                }
-            r |> should equal (Bad [GraphAccessFailure (InvalidVertexId (VertexId -1))])
+        testCase "vertex lookup with negative id returns GraphAccessFailure " <| fun _ ->           
+            trial {
+                let! g = load_undirected_test_graph
+                return! Graph.vertexFromId g (VertexId -1)
+            }
+            |> isGraphAccessFailure -1 |> should be True
 
         testCase "vertex lookup with out of range id returns GraphAccessFailure " <| fun _ ->
             trial {
                 let! g = load_undirected_test_graph
                 return! Graph.vertexFromId g (VertexId 999)
             }
-            |> should equal (Bad [GraphAccessFailure (InvalidVertexId (VertexId 999))])
+            |> isGraphAccessFailure 999 |> should be True
                 
         testCase "vertices sequence is 1 based" <| fun _ ->
             trial {
