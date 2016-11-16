@@ -21,7 +21,7 @@ open Graphs
 let outdir = __SOURCE_DIRECTORY__ // Places for generated graphs on the file system
 
 /// Use the system shell (command prompt) to open the file - F# interactive only
-let shellOpenFileWithDefaultApplication fileName =
+let shellOpenFileWithDefaultApplication fileName: GraphResult<int> =
     // Don't wait on the process - use START to run the shell command in a separate ignored process
     let setupProcess = 
         (fun (processStartInfo : Diagnostics.ProcessStartInfo) -> 
@@ -29,16 +29,18 @@ let shellOpenFileWithDefaultApplication fileName =
                 processStartInfo.Arguments <- "/C START " + fileName)
     // We could also use Proc.asyncShellExec, but we don't wait on the command
     // it's really only the start up cost of cmd.exe that we are blocked on.
-    Fake.ProcessHelper.ExecProcess setupProcess (TimeSpan.FromSeconds 2.0) 
+    tryF (fun _ -> Fake.ProcessHelper.ExecProcess setupProcess (TimeSpan.FromSeconds 2.0))
+         FileAccessFailure     
 
-let makeShowGraphViz vizName (graph: Graph)  = 
-    let tryOpenVizFile fileName = 
-        match fileName with
-        | Some(f) -> shellOpenFileWithDefaultApplication f |> ignore
-        | _ -> ()
-    Visualisation.toDotGraphDescriptionLanguage graph
-    |> Visualisation.makeGraphVisualisation <| Path.Combine(outdir, vizName)
-    |> lift tryOpenVizFile
+let makeShowGraphViz vizName (graph: Graph)  =             
+    trial {
+        let graphDef = Visualisation.toDotGraphDescriptionLanguage graph
+        let outFilePathNoExtension = Path.Combine(outdir, vizName)
+        let! imagePath = Visualisation.makeGraphVisualisation graphDef outFilePathNoExtension 
+        let! processExitCode = shellOpenFileWithDefaultApplication imagePath
+        return imagePath
+    }
+
 
 let home = Environment.GetEnvironmentVariable("HOME")
 let test_graph_file file_name = 
@@ -60,19 +62,19 @@ let g_scc = Generation.readGraphFromFile true ssc_file
 let linear_file = test_graph_file "linearly_ordered_graph.txt"
 let g_linear = Generation.readGraphFromFile true linear_file 
 
-Result.map Algorithms.reverseDirectedGraph g_dag
-Result.map Algorithms.isDAG g_dag
-Result.map Algorithms.dfsPrePostOrderNumbers g_dag
-Result.map Algorithms.edgesSet g_dag
-Result.map Algorithms.stronglyConnectedComponents g_dag
-Result.map Algorithms.topologicalOrdering g_dag
+lift Algorithms.reverseDirectedGraph g_dag
+lift Algorithms.isDAG g_dag
+lift Algorithms.dfsPrePostOrderNumbers g_dag
+lift Algorithms.edgesSet g_dag
+lift Algorithms.stronglyConnectedComponents g_dag
+lift Algorithms.topologicalOrdering g_dag
 
-Result.map Visualisation.toDotGraphDescriptionLanguage g_undir
+lift Visualisation.toDotGraphDescriptionLanguage g_undir
 
-let rev_scc = g_scc |> Result.map (Algorithms.reverseDirectedGraph >> Option.get)
-let s_comps = g_scc |> Result.map (Algorithms.stronglyConnectedComponents >> Option.get)
+let rev_scc = g_scc |> lift Algorithms.reverseDirectedGraph
+let s_comps = g_scc |> lift Algorithms.stronglyConnectedComponents
 
-rev_scc |> Result.map (makeShowGraphViz "reverse_strong_components")
-g_scc   |> Result.map (makeShowGraphViz  "strong_components")
-g_dag   |> Result.map (makeShowGraphViz "dag")
-g_undir |> Result.map (makeShowGraphViz "undir")
+rev_scc |> lift (makeShowGraphViz "reverse_strong_components")
+g_scc   |> lift (makeShowGraphViz  "strong_components")
+g_dag   |> lift (makeShowGraphViz "dag")
+g_undir |> lift (makeShowGraphViz "undir")
