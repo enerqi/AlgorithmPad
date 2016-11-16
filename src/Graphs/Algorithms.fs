@@ -4,8 +4,10 @@ open System.Collections.Generic
 open System.Collections
 open Nessos.Streams
 
+
 module Algorithms =          
 
+    open C5
     open Chessie.ErrorHandling
     open Graph   
 
@@ -253,7 +255,8 @@ module Algorithms =
         |> Set.ofSeq
           
 
-    /// Run a breadth first search on the graph from a source vertex
+    /// Run a breadth first search on an unweighted graph to find the shortest path tree to
+    /// all other vertices from a source vertex. 
     let breadthFirstSearch graph (source: VertexId) : GraphResult<BFS> = 
         
         // Start of only knowing the distance to the source vertex. Every other vertex is unprocessed - None.
@@ -287,7 +290,8 @@ module Algorithms =
         }
      
     
-    /// Return the shortest path from a source vertex defined by the bfsData to a destination vertex
+    /// Return the shortest path from a source vertex defined by the breadth first search
+    /// result data to a destination vertex.
     let shortestPath (bfsData: BFS) (v: VertexId): ResizeArray<VertexId> option = 
 
         if bfsData.ShortestPathTree.[v.Id].IsSome then
@@ -350,3 +354,30 @@ module Algorithms =
 
             return (not failedTwoColouring)
         }
+
+    /// Calculate the shortest path from a source vertex to all other vertices on weighted graph 
+    /// with non-negative weights. Uses the Djikstra algorithm.
+    let nonNegativeWeightedShortestPathSearch graph (source: VertexId) = 
+        
+        let distances = Array.create (graph.VerticesCount + 1) None
+        let pathTree = Array.create (graph.VerticesCount + 1) None
+
+        distances.[1] <- Some(Distance 0u)
+
+        let heap = new C5.IntervalHeap<int>();
+        heap.Add(10);
+        heap.Add(5);
+        heap.FindMin();
+        // https://c5docs.azurewebsites.net/
+
+
+    /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph
+    /// that may have positive or negative weights. Uses the Bellman-Ford algorithm.
+    let anyWeightsShortestPathSearch graph (source: VertexId) = 
+        2
+
+    let minimumSpanningTreeKruskal graph = 
+        3
+
+    let minimumSpanningTreePrim graph = 
+        4
