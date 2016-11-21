@@ -364,10 +364,10 @@ module Algorithms =
 
         distances.[1] <- Some(Distance 0u)
 
-        let heap = new C5.IntervalHeap<int>();
-        heap.Add(10);
-        heap.Add(5);
-        heap.FindMin();
+        let heap = new C5.IntervalHeap<int>()
+        heap.Add(10)
+        heap.Add(5)
+        heap.FindMin()
         // https://c5docs.azurewebsites.net/
 
 

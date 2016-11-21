@@ -61,6 +61,7 @@
   <Import Project="..\..\.paket\paket.targets" />
   <ItemGroup>
     <Compile Include="Result.fs" />
+    <Compile Include="Heaps.fs" />
     <Compile Include="DomainTypes.fs" />
     <Compile Include="Graph.fs" />
     <Compile Include="Generation.fs" />
