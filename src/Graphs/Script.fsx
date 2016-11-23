@@ -4,6 +4,7 @@
 #r @"FAKE/tools/FakeLib.dll"
 #r @"Streams/lib/net45/Streams.dll" 
 #load "Result.fs"
+#load "Heaps.fs"
 #load "DomainTypes.fs"
 #load "Graph.fs"
 #load "Generation.fs"
@@ -79,3 +80,17 @@ rev_scc |> lift (makeShowGraphViz "reverse_strong_components")
 g_scc   |> lift (makeShowGraphViz  "strong_components")
 g_dag   |> lift (makeShowGraphViz "dag")
 g_undir |> lift (makeShowGraphViz "undir")
+
+
+let genRandomNumbers count max =
+    let rnd = System.Random()
+    List.init count (fun _ -> rnd.Next () % max)
+
+let testMaxHeap n = 
+    let h : Heaps.DHeap.DHeap<int> = Heaps.maxBinaryHeap()
+    for num in (genRandomNumbers n 100) do
+        Heaps.DHeap.insert h num 
+    for i=1 to n do
+        let extracted = Heaps.DHeap.extractHighestPriority h
+        printfn "%d" n
+
