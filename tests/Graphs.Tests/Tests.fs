@@ -84,6 +84,7 @@ module private TestUtils =
  
 open TestUtils
 
+
 [<Tests>]
 let graphTypeTests = 
 
@@ -264,7 +265,64 @@ let algorithmTests =
             }
             |> returnOrFail
     ]
+
+
+[<Tests>]
+let heapTests = 
+    //let runPropertyTestOnHeapArity predicate arity =
+    //    let heap = fun _ -> DHeap.empty DHeap.Quaternary DHeap.MaxKey DHeap.DefaultCapacity 
+
+    // want fscheck to do this really....
+    let genRandomNumbers count maxValue =
+        let rnd = System.Random()
+        Array.init count (fun _ -> rnd.Next () % maxValue)
+
+    testList "Heap ADT" [
     
+        testCase "maxHeap" <| fun _ ->
+            let genRandomNumbers count max =
+                let rnd = System.Random()
+                List.init count (fun _ -> rnd.Next () % max)
+
+            let testMaxHeap n = 
+                let h : Heaps.DHeap.DHeap<int> = Heaps.maxBinaryHeap()
+                for num in (genRandomNumbers n 100) do
+                    Heaps.DHeap.insert h num 
+                for i=1 to n do
+                    let extracted = Heaps.DHeap.extractHighestPriority h
+                    printfn "%A" extracted
+            testMaxHeap 10
+
+        testProperty "Max heap: putting in a singleton gets the same singleton out on extracting highest priority." <|
+            fun (elem: int) -> 
+                let heap = Heaps.maxBinaryHeap()
+                Heaps.DHeap.insert heap elem
+                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
+                extracted = ok elem
+
+        testProperty "Min heap: putting in a singleton gets the same singleton out on extracting highest priority." <|
+            fun (elem: int) -> 
+                let heap = Heaps.minBinaryHeap()
+                Heaps.DHeap.insert heap elem
+                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
+                extracted = ok elem
+
+                
+//        testProperty "Max heap: random numbers in and biggest numbers come out first." <|
+//            fun (elems: int array) ->
+//                let heap = Heaps.maxBinaryHeap()
+//                Array.iter (fun item -> Heaps.DHeap.insert heap item) elems 
+//                
+//                let itemsCount = elems.Count
+//                let ordered = Array.sort |> Array.rev
+//
+//                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
+//                extracted = ok elem
+//                
+
+    ]
+
+        
 
 // Fuchu, FsUnit, Unquote and FsCheck Test library Examples /////////////////////////////
 let fsCheckConfigOverride = { FsCheck.Config.Default with MaxTest = 10000 }
