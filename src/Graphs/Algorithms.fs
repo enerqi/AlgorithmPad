@@ -7,7 +7,6 @@ open Nessos.Streams
 
 module Algorithms =          
 
-    open C5
     open Chessie.ErrorHandling
     open Graph   
 
@@ -364,11 +363,7 @@ module Algorithms =
 
         distances.[1] <- Some(Distance 0u)
 
-        let heap = new C5.IntervalHeap<int>()
-        heap.Add(10)
-        heap.Add(5)
-        heap.FindMin()
-        // https://c5docs.azurewebsites.net/
+        //let heap = ...
 
 
     /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph

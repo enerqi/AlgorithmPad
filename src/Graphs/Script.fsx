@@ -1,5 +1,4 @@
 #I "../../packages"
-#r @"C5/lib/net45/C5.dll"
 #r @"Chessie/lib/net40/Chessie.dll"
 #r @"FAKE/tools/FakeLib.dll"
 #r @"Streams/lib/net45/Streams.dll" 
