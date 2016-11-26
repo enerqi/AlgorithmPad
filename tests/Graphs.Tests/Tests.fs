@@ -10,6 +10,7 @@ open FsUnit
 open Swensen.Unquote
 open Swensen.Unquote.Operators // [Under the hood extras]
 
+
 module private TestUtils =
     let test_graph_file file_name = 
         let testFilesDir = __SOURCE_DIRECTORY__
@@ -285,7 +286,7 @@ let heapTests =
                 List.init count (fun _ -> rnd.Next () % max)
 
             let testMaxHeap n = 
-                let h : Heaps.DHeap.DHeap<int> = Heaps.maxBinaryHeap()
+                let h : Heaps.DHeap<int> = Heaps.maxBinaryHeap()
                 for num in (genRandomNumbers n 100) do
                     Heaps.DHeap.insert h num 
                 for i=1 to n do
@@ -297,14 +298,14 @@ let heapTests =
             fun (elem: int) -> 
                 let heap = Heaps.maxBinaryHeap()
                 Heaps.DHeap.insert heap elem
-                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
+                let extracted: Heaps.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
                 extracted = ok elem
 
         testProperty "Min heap: putting in a singleton gets the same singleton out on extracting highest priority." <|
             fun (elem: int) -> 
                 let heap = Heaps.minBinaryHeap()
                 Heaps.DHeap.insert heap elem
-                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
+                let extracted: Heaps.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
                 extracted = ok elem
 
                 
@@ -320,7 +321,21 @@ let heapTests =
 //                extracted = ok elem
 //                
 
+// - different paths same destination e.g. commutative, associative
+// insert x3, remove x1 === insert1, removex1, insert2?
+// - there and back again : inverses ... set/get write/read create/destroy
+// insert/remove insert/remove - same count, same highestPriority (T or failure), same isEmpty
+// - some things never change : invariants what remains the same after the operation
+// extractHighest same count/isEmpty, same extractHighest
+// - More change but still the same : idempotence
+// isEmpty/Count are pure
+// - solving smaller problems first : structural induction - prove for 1 case, prove for 2 case, n case
+// ?
+// - a different implementation to compare with
+// using someone else's library as a comparison tool
     ]
+
+
 
         
 
