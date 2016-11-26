@@ -53,8 +53,8 @@ module Heaps =
     }
                 
     /// A mutable D-ary heap Abstact Data Type (ADT) supporting the basic operations:
-    /// - insert, extractHighestPriority ("remove" "delete" "pop"), highestPriority ("peek") with O(n log n) complexity
-    /// - size, isEmpty with O(1) and pure functions
+    /// - insert, extractHighestPriority ("remove" "delete" "pop"), highestPriority ("peek") and extractHighestPriorityAndInsert all with O(n log n) complexity
+    /// - size, isEmpty with O(1) complexity are pure functions
     [<RequireQualifiedAccess; CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
     module DHeap = 
 
@@ -62,7 +62,7 @@ module Heaps =
         let size dheap = 
             dheap.Heap.Count
 
-            /// Is the dheap priority queue empty
+        /// Is the dheap priority queue empty
         let isEmpty dheap = 
             dheap.Heap.Count = 0
 
@@ -203,6 +203,18 @@ module Heaps =
                 ok highest
             else
                 fail EmptyHeap
+
+        /// Insert a key into and extract the highest priority key from the dheap priority queue
+        /// Purely a performance optimisation that reduces the heap maintenance cost over separately
+        /// calling `extractHighestPriority` then `insert`.
+        let extractHighestPriorityAndInsert dheap (newKey: 'T) : HeapResult<'T> = 
+            if not(isEmpty dheap) then
+                let highest = dheap.Heap.[0]
+                dheap.Heap.[0] <- newKey
+                sink dheap 0
+                ok highest
+            else
+                fail EmptyHeap
     
                 
     let minBinaryHeap = fun _ -> DHeap.empty Binary MinKey DefaultCapacity 
@@ -221,11 +233,10 @@ module Heaps =
 
 
 // Optional extra functionality to consider:
-// 1) changePriority dheap key (re-adjust in the heap after the key is mutated externally). This is quite expensive in terms of overheads.        
+// 1) *custom comparators instead of just the natural IComparable ordering.
+// 2) changePriority dheap key (re-adjust in the heap after the key is mutated externally). This is quite expensive in terms of overheads.        
 //    See also https://github.com/contain-rs/discuss/issues/11 for impl with "stable handles".
-// 2) deleteKey dheap key. Again quite expensive as you need a way to find the item in the heap quickly.        
-// 3) *custom comparators instead of just the natural IComparable ordering.
+// 3) deleteKey dheap key. Again quite expensive as you need a way to find the item in the heap quickly.        
 // 4) merge dheap otherHeap - O(n) complexity for a dheap, but fast for something like a pairing heap.
-// 5) meld dheap otherHeap - destroy both original heaps whilst creating a new one
-// 5) replace - pop root and push new key. Balances the tree once as done at the same time.
+// 5) meld dheap otherHeap - O(n) destroy both original heaps whilst creating a new one
     
