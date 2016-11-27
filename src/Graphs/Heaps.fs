@@ -59,26 +59,26 @@ module Heaps =
     module DHeap = 
 
         /// Return the number of entries in the dheap priority queue
-        let size dheap = 
+        let size (dheap: DHeap<'T>) : int = 
             dheap.Heap.Count
 
         /// Is the dheap priority queue empty
-        let isEmpty dheap = 
+        let isEmpty (dheap: DHeap<'T>) : bool = 
             dheap.Heap.Count = 0
 
 
         /// Convert a power of two number into its value as a power of two integer exponent
-        let private asPowerOfTwoExponent n = 
+        let private asPowerOfTwoExponent (n: int) : int = 
             Math.Log(float n, 2.0) |> int
     
         /// Extract the capacity value or return a default.
-        let private capacityValue capacity = 
+        let private capacityValue (capacity: Capacity) : int = 
             match capacity with
             | Capacity(cap) -> int cap 
             | DefaultCapacity -> 16
 
         /// Return the arity of a tree node in the heap as an integer
-        let private arityToInteger arity = 
+        let private arityToInteger (arity: HeapArity) : int = 
             match arity with
             | Binary -> 2
             | Quaternary -> 4
@@ -87,27 +87,27 @@ module Heaps =
             | TerDenBinary -> 32                       
        
         /// For a key identified by its index `n` in the heap, return the index of that key's kth child.
-        let private indexOfKthChild dheap n k =         
+        let private indexOfKthChild (dheap: DHeap<'T>) (n: int) (k: int) : int =         
             (n <<< dheap.TreeNodeChildCountAsPowerOfTwoExponent) + k
 
         /// For a key identified by its index `n` in the heap, return the index of its parent.
-        let private indexOfParent dheap n =              
+        let private indexOfParent (dheap: DHeap<'T>) (n: int) : int =              
             (n - 1) >>> dheap.TreeNodeChildCountAsPowerOfTwoExponent // note this will not work if passed index 0, the root index of the heap tree (which is guarded against)
 
         /// Exchange the positions of two elements specified by index in the heap's array 
-        let private swap dheap index1 index2 = 
+        let private swap (dheap: DHeap<'T>) (index1: int) (index2: int) = 
             let tmp = dheap.Heap.[index1]
             dheap.Heap.[index1] <- dheap.Heap.[index2]
             dheap.Heap.[index2] <- tmp
 
         /// Is the element at index1 higher priority than the element at index2
-        let private isHigherPriority dheap index1 index2 = 
+        let private isHigherPriority (dheap: DHeap<'T>) (index1: int) (index2: int) : bool = 
             let elem1 = dheap.Heap.[index1]
             let elem2 = dheap.Heap.[index2]
             dheap.IsHigherPriorityComparer elem1 elem2
 
         /// Return highest priority child index of a parent 'index'
-        let private highestPriorityChildIndex dheap index =
+        let private highestPriorityChildIndex (dheap: DHeap<'T>) (index: int) : int =
             let firstChildIndex = indexOfKthChild dheap index 1
             let lastChildIndex = indexOfKthChild dheap index dheap.TreeNodeChildCount
             let heapSize = (size dheap)
@@ -120,7 +120,7 @@ module Heaps =
 
         /// Ensure that a key (identified by index) is higher priority than its children and if not 
         /// sink it down the tree swapping with a child (and grandchildren etc) as required
-        let rec private sink dheap index = 
+        let rec private sink (dheap: DHeap<'T>) (index: int) = 
             let highestChildIndex = highestPriorityChildIndex dheap index
             if highestChildIndex < (size dheap) && 
                 isHigherPriority dheap highestChildIndex index then
@@ -129,7 +129,7 @@ module Heaps =
 
         /// Ensure that a key (identified by index) is lower priority than its parent and if not 
         /// swim it up the tree swapping with the parent (and grandparent etc) as required
-        let rec private swim dheap index =       
+        let rec private swim (dheap: DHeap<'T>) (index:int) =       
             if index <> 0 then
                 let parentIndex = indexOfParent dheap index        
                 if isHigherPriority dheap index parentIndex then
@@ -138,14 +138,14 @@ module Heaps =
 
 
         /// Insert a key into the dheap priority queue    
-        let insert dheap (key: 'T) = 
+        let insert (dheap: DHeap<'T>) (key: 'T) = 
             // Add to heap array, making it the last element and lowest priority and 
             // then swim it up to its proper place.
             dheap.Heap.Add(key)
             swim dheap <| (size dheap) - 1
 
         /// Inserts everything in the items seq into an *empty* dheap.
-        let private heapifyItems dheap items = 
+        let private heapifyItems (dheap: DHeap<'T>) (items: 'T seq) = 
             // We would use a simpler ```Seq.iter (fun item -> insert dheap item) items```
             // if we want a convenience bulk insert on a non-empty heap.
             if not(isEmpty dheap) then
@@ -185,14 +185,14 @@ module Heaps =
            
         /// Return the highest priority key from the dheap priority queue.
         /// This is the min or max key depending upon whether it is a min/max heap respectively.
-        let highestPriority dheap : HeapResult<'T> = 
+        let highestPriority (dheap: DHeap<'T>) : HeapResult<'T> = 
             if not(isEmpty dheap) then 
                 ok dheap.Heap.[0] 
             else
                 fail EmptyHeap
 
         /// Return and remove the highest priority key from the dheap priority queue
-        let extractHighestPriority dheap : HeapResult<'T> =         
+        let extractHighestPriority (dheap: DHeap<'T>) : HeapResult<'T> =         
             if not(isEmpty dheap) then
                 // Swap highest with end of array, remove it, then sink the top item
                 let highest = dheap.Heap.[0]
@@ -207,7 +207,7 @@ module Heaps =
         /// Insert a key into and extract the highest priority key from the dheap priority queue
         /// Purely a performance optimisation that reduces the heap maintenance cost over separately
         /// calling `extractHighestPriority` then `insert`.
-        let extractHighestPriorityAndInsert dheap (newKey: 'T) : HeapResult<'T> = 
+        let extractHighestPriorityAndInsert (dheap: DHeap<'T>) (newKey: 'T) : HeapResult<'T> = 
             if not(isEmpty dheap) then
                 let highest = dheap.Heap.[0]
                 dheap.Heap.[0] <- newKey
@@ -217,15 +217,15 @@ module Heaps =
                 fail EmptyHeap
     
                 
-    let minBinaryHeap = fun _ -> DHeap.empty Binary MinKey DefaultCapacity 
-    let maxBinaryHeap = fun _ -> DHeap.empty Binary MaxKey DefaultCapacity
-    let minQuaternaryHeap = fun _ -> DHeap.empty Quaternary MinKey DefaultCapacity 
-    let maxQuaternaryHeap = fun _ -> DHeap.empty Quaternary MaxKey DefaultCapacity 
+    let minBinaryHeap : (unit -> DHeap<'T>) = fun _ -> DHeap.empty Binary MinKey DefaultCapacity 
+    let maxBinaryHeap : (unit -> DHeap<'T>) = fun _ -> DHeap.empty Binary MaxKey DefaultCapacity
+    let minQuaternaryHeap : (unit -> DHeap<'T>) = fun _ -> DHeap.empty Quaternary MinKey DefaultCapacity 
+    let maxQuaternaryHeap : (unit -> DHeap<'T>) = fun _ -> DHeap.empty Quaternary MaxKey DefaultCapacity 
 
-    let minBinaryHeapWith items = DHeap.ofSeq Binary MinKey DefaultCapacity items
-    let maxBinaryHeapWith items = DHeap.ofSeq Binary MaxKey DefaultCapacity items
-    let minQuaternaryHeapWith items = DHeap.ofSeq Quaternary MinKey DefaultCapacity items
-    let maxQuaternaryHeapWith items = DHeap.ofSeq Quaternary MaxKey DefaultCapacity items
+    let minBinaryHeapWith (items: seq<'T>) : DHeap<'T> = DHeap.ofSeq Binary MinKey DefaultCapacity items
+    let maxBinaryHeapWith (items: seq<'T>) : DHeap<'T> = DHeap.ofSeq Binary MaxKey DefaultCapacity items
+    let minQuaternaryHeapWith (items: seq<'T>) : DHeap<'T> = DHeap.ofSeq Quaternary MinKey DefaultCapacity items
+    let maxQuaternaryHeapWith (items: seq<'T>) : DHeap<'T> = DHeap.ofSeq Quaternary MaxKey DefaultCapacity items
 
 
 
