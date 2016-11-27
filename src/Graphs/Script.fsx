@@ -22,7 +22,7 @@ open Graphs
 let outdir = __SOURCE_DIRECTORY__ // Places for generated graphs on the file system
 
 /// Use the system shell (command prompt) to open the file - F# interactive only
-let shellOpenFileWithDefaultApplication fileName: GraphResult<int> =
+let shellOpenFileWithDefaultApplication (fileName: string) : GraphResult<int> =
     // Don't wait on the process - use START to run the shell command in a separate ignored process
     let setupProcess = 
         (fun (processStartInfo : Diagnostics.ProcessStartInfo) -> 
@@ -33,7 +33,7 @@ let shellOpenFileWithDefaultApplication fileName: GraphResult<int> =
     tryF (fun _ -> Fake.ProcessHelper.ExecProcess setupProcess (TimeSpan.FromSeconds 2.0))
          FileAccessFailure     
 
-let makeShowGraphViz vizName (graph: Graph)  =             
+let makeShowGraphViz (vizName: string) (graph: Graph) : GraphResult<string> =             
     trial {
         let graphDef = Visualisation.toDotGraphDescriptionLanguage graph
         let outFilePathNoExtension = Path.Combine(outdir, vizName)
@@ -44,7 +44,7 @@ let makeShowGraphViz vizName (graph: Graph)  =
 
 
 let home = Environment.GetEnvironmentVariable("HOME")
-let test_graph_file file_name = 
+let test_graph_file (file_name: string) : string = 
     let dir = Path.Combine(__SOURCE_DIRECTORY__, @"../../tests/Graphs.Tests/") 
     Path.Combine(dir, file_name) |> Path.GetFullPath
 
@@ -79,17 +79,3 @@ rev_scc |> lift (makeShowGraphViz "reverse_strong_components")
 g_scc   |> lift (makeShowGraphViz  "strong_components")
 g_dag   |> lift (makeShowGraphViz "dag")
 g_undir |> lift (makeShowGraphViz "undir")
-
-
-let genRandomNumbers count max =
-    let rnd = System.Random()
-    List.init count (fun _ -> rnd.Next () % max)
-
-let testMaxHeap n = 
-    let h : Heaps.DHeap.DHeap<int> = Heaps.maxBinaryHeap()
-    for num in (genRandomNumbers n 100) do
-        Heaps.DHeap.insert h num 
-    for i=1 to n do
-        let extracted = Heaps.DHeap.extractHighestPriority h
-        printfn "%d" n
-

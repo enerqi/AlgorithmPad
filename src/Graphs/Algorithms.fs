@@ -12,7 +12,7 @@ module Algorithms =
 
     type VisitedSet(graph: Graph) = 
         let flags = new BitArray(int32 graph.Vertices.Length)
-        member this.Contains(vertexId: VertexId) = flags.Get(int32 vertexId.Id)
+        member this.Contains(vertexId: VertexId) : bool = flags.Get(int32 vertexId.Id)
         member this.Insert(vertexId: VertexId) = flags.Set(int32 vertexId.Id, true)
 
             
@@ -35,7 +35,7 @@ module Algorithms =
         }
                     
     /// Return the connected components of graph.
-    let connectedComponents graph: GraphResult<ResizeArray<ResizeArray<VertexId>>> =              
+    let connectedComponents (graph: Graph) : GraphResult<ResizeArray<ResizeArray<VertexId>>> =              
         let visitedSet = VisitedSet(graph)
         let mutable componentId = 0
         let componentGroups = new ResizeArray<ResizeArray<VertexId>>()
@@ -62,7 +62,7 @@ module Algorithms =
 
     /// Return a new graph with all edges reversed. All edges point from their edge destinations to their sources.
     /// An undirected graph is returned unchanged.
-    let reverseDirectedGraph graph = 
+    let reverseDirectedGraph (graph: Graph) : Graph = 
         if graph.IsDirected then
             let reverseGraph = {graph with Vertices = 
                                            [|for v in graph.Vertices do
@@ -78,7 +78,7 @@ module Algorithms =
             graph
           
     /// Is a graph directed and acyclic
-    let isDAG graph: GraphResult<bool> = 
+    let isDAG (graph: Graph) : GraphResult<bool> = 
         
         // - Detect any back edges in the Depth First Search stack.
         //   There is a cycle in a graph only if there is a back edge present in the graph (self link or link to parent). 
@@ -128,7 +128,7 @@ module Algorithms =
 
     /// Return an array that can be indexed by VertexId.Id where each element contains the depth first search
     /// pre and post order numbers. 0 is the first visited vertex. With each new node visited the number is incremented.
-    let dfsPrePostOrderNumbers graph: GraphResult<(int * int)[]> = 
+    let dfsPrePostOrderNumbers (graph: Graph) : GraphResult<(int * int)[]> = 
         let visitedSet = VisitedSet(graph)
         let visitOrderNumbers = Array.create (graph.VerticesCount + 1) (0, 0)
         let mutable visitNumber = 0
@@ -207,7 +207,7 @@ module Algorithms =
 
     
     /// Return the topological ordering (source vertices before sink vertices) of a directed acyclic graph
-    let topologicalOrdering dag: GraphResult<VertexId []> = 
+    let topologicalOrdering (dag: Graph) : GraphResult<VertexId []> = 
 
         trial {
             // Read off the reverse post order numbers 
@@ -225,7 +225,7 @@ module Algorithms =
             
 
     /// Return a set of all the edge (source, destination) vertex id pairs
-    let edgesSet graph : Set<int * int> = 
+    let edgesSet (graph: Graph) : Set<int * int> = 
             
         /// The function that given a source vertex index and a destination vertex id returns
         /// (source index, destination index) pair        
@@ -256,7 +256,7 @@ module Algorithms =
 
     /// Run a breadth first search on an unweighted graph to find the shortest path tree to
     /// all other vertices from a source vertex. 
-    let breadthFirstSearch graph (source: VertexId) : GraphResult<BFS> = 
+    let breadthFirstSearch (graph: Graph) (source: VertexId) : GraphResult<BFS> = 
         
         // Start of only knowing the distance to the source vertex. Every other vertex is unprocessed - None.
         let distances = Array.create (graph.VerticesCount + 1) None
@@ -291,7 +291,7 @@ module Algorithms =
     
     /// Return the shortest path from a source vertex defined by the breadth first search
     /// result data to a destination vertex.
-    let shortestPath (bfsData: BFS) (v: VertexId): ResizeArray<VertexId> option = 
+    let shortestPath (bfsData: BFS) (v: VertexId) : ResizeArray<VertexId> option = 
 
         if bfsData.ShortestPathTree.[v.Id].IsSome then
             let path = new ResizeArray<VertexId>()
@@ -311,7 +311,7 @@ module Algorithms =
     /// Return true if the graph is bipartite. 
     /// A graph is bipartite if its vertices can be split into two groups such that each edge of the
     /// graph joins to vertices from the other group
-    let isBipartite graph: GraphResult<bool> =
+    let isBipartite (graph: Graph) : GraphResult<bool> =
         
         // In other words, a graph is bipartite if its vertices can be colored with two colors
         // (say, black and white) such that the endpoints of each edge have different colors. 
@@ -356,7 +356,7 @@ module Algorithms =
 
     /// Calculate the shortest path from a source vertex to all other vertices on weighted graph 
     /// with non-negative weights. Uses the Djikstra algorithm.
-    let nonNegativeWeightedShortestPathSearch graph (source: VertexId) = 
+    let nonNegativeWeightedShortestPathSearch (graph: Graph) (source: VertexId) = 
         
         let distances = Array.create (graph.VerticesCount + 1) None
         let pathTree = Array.create (graph.VerticesCount + 1) None
@@ -368,11 +368,11 @@ module Algorithms =
 
     /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph
     /// that may have positive or negative weights. Uses the Bellman-Ford algorithm.
-    let anyWeightsShortestPathSearch graph (source: VertexId) = 
+    let anyWeightsShortestPathSearch (graph: Graph) (source: VertexId) = 
         2
 
-    let minimumSpanningTreeKruskal graph = 
+    let minimumSpanningTreeKruskal (graph: Graph) = 
         3
 
-    let minimumSpanningTreePrim graph = 
+    let minimumSpanningTreePrim (graph: Graph) = 
         4

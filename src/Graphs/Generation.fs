@@ -31,7 +31,7 @@ module Generation =
     /// Line (2 to m-1): edge u v with id (>= 1 and <= n) - directed or undirected according to the problem.
     ///                | edge u v w - includes the weight 
     /// For now the graph should be simple - no self loops nor parallel edges.
-    let readGraph isDirected (dataLines: seq<string>) : GraphResult<Graph> = 
+    let readGraph (isDirected: bool) (dataLines: seq<string>) : GraphResult<Graph> = 
         
         let header, edges = Seq.head dataLines, Seq.tail dataLines
 

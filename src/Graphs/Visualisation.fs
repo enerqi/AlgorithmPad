@@ -12,7 +12,7 @@ module Visualisation =
     open Algorithms 
 
     /// Transform a graph to its dot graph description language string
-    let toDotGraphDescriptionLanguage (graph: Graph) = 
+    let toDotGraphDescriptionLanguage (graph: Graph) : string = 
         let descriptionOpen = 
             if graph.IsDirected then
                 "digraph {"
@@ -42,7 +42,7 @@ module Visualisation =
 
     /// Run the external 'dot' process to generate a graph image file
     /// Returns a Result of the image path or Error if creation failed
-    let makeGraphVisualisation dotDescription outFilePathNoExtension: GraphResult<string> = 
+    let makeGraphVisualisation (dotDescription: string) (outFilePathNoExtension: string) : GraphResult<string> = 
 
         let getOutFileDirectory = 
             tryF (fun _ -> Path.GetDirectoryName(outFilePathNoExtension)) FileAccessFailure

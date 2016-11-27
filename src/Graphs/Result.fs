@@ -9,9 +9,9 @@ open Chessie.ErrorHandling
 [<AutoOpen>]    
 module Result =    
 
-    /// Run the unit function `f` and return a unit Result if successful else
+    /// Run the unit input function `f` and return its Result if successful else
     /// convert any exceptions to the error type with the given `exnToMessage` function.
-    let tryF f exnToMessage = 
+    let inline tryF (f: unit -> 'a) (exnToMessage: _ -> 'b) : Result<'a, 'b>= 
         try
             f() |> ok
         with 
