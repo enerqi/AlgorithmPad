@@ -268,6 +268,12 @@ let algorithmTests =
     ]
 
 
+type DHeapParams = { 
+    Capacity: Heaps.Capacity
+    Arity: Heaps.HeapArity
+    Order: Heaps.HeapRootOrdering
+}
+
 [<Tests>]
 let heapTests = 
     //let runPropertyTestOnHeapArity predicate arity =
@@ -277,6 +283,7 @@ let heapTests =
     let genRandomNumbers count maxValue =
         let rnd = System.Random()
         Array.init count (fun _ -> rnd.Next () % maxValue)
+            
 
     testList "Heap ADT" [
     
@@ -294,32 +301,17 @@ let heapTests =
                     printfn "%A" extracted
             testMaxHeap 10
 
-        testProperty "Max heap: putting in a singleton gets the same singleton out on extracting highest priority." <|
-            fun (elem: int) -> 
-                let heap = Heaps.maxBinaryHeap()
-                Heaps.DHeap.insert heap elem
-                let extracted: Heaps.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
-                extracted = ok elem
+        testProperty "IsEmpty is true of any new empty heap." <|
+            fun (heapParams: DHeapParams) ->
+                let h = Heaps.DHeap.empty heapParams.Arity heapParams.Order heapParams.Capacity
+                Heaps.DHeap.isEmpty h 
 
-        testProperty "Min heap: putting in a singleton gets the same singleton out on extracting highest priority." <|
-            fun (elem: int) -> 
+        testProperty "Singleton in, Singleton out" <|
+            fun (elem: int) ->
                 let heap = Heaps.minBinaryHeap()
                 Heaps.DHeap.insert heap elem
                 let extracted: Heaps.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
                 extracted = ok elem
-
-                
-//        testProperty "Max heap: random numbers in and biggest numbers come out first." <|
-//            fun (elems: int array) ->
-//                let heap = Heaps.maxBinaryHeap()
-//                Array.iter (fun item -> Heaps.DHeap.insert heap item) elems 
-//                
-//                let itemsCount = elems.Count
-//                let ordered = Array.sort |> Array.rev
-//
-//                let extracted: Heaps.DHeap.HeapResult<int> = Heaps.DHeap.extractHighestPriority heap
-//                extracted = ok elem
-//                
 
 // - different paths same destination e.g. commutative, associative
 // insert x3, remove x1 === insert1, removex1, insert2?

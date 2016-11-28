@@ -9,14 +9,91 @@ open System
 open FsCheck
 open Graphs.Heaps
 
-[<StructuredFormatDisplay("FooBar Heap={Heap} Arity={TreeNodeChildCount}")>]
-type FooBar<'T> = {
-    Heap: ResizeArray<'T>
-    TreeNodeChildCount: int
-}
-
-let heapGen = Arb.generate<DHeap.DHeap<int>>
+// Arb.generate - the *generator* of the registered arbitrary instance for that type
+// Not so useful as it uses reflection and directly creates impossible arities and heaps
+let heapGen = Arb.generate<DHeap<int>>
 Gen.sample 8 2 heapGen
+
+Gen.sample 128 10 Arb.generate<Capacity> // a good range of silly values + some defaults 
+Gen.sample 10 10 Arb.generate<HeapArity> // fine, biased towards binary
+Gen.sample 10 10 Arb.generate<HeapRootOrdering> // fine
+
+type DHeapParams = { 
+    Capacity: Capacity
+    Arity: HeapArity
+    Order: HeapRootOrdering
+}
+Gen.sample 128 10 Arb.generate<DHeapParams> 
+
+Arb.from<int> // what arb instance is used for this type
+Arb.from<DHeap<float>>
+Arb.fromGen  // creating instances with custom generator for type
+Arb.fromGenShrink // but not registered unless call Arb.register
+Arb.register
+Arb.registerByType
+
+// So, need to build a custom Gen (+ shrinker) and pass to Arb.fromGen then Arb.register that arbitrary
+// Or need to build a custom gen + shrinker and add to Arbitrary<'a> subclass trick
+// The custom gen needs to Gen DHeapParams as a type or individual types and combine into constructor call
+
+Gen.oneof // randomly choose one of these generators
+
+open FsCheck.GenBuilder // gen computation expression
+let genHeap<'T when 'T : comparison> : Gen<DHeap<IComparable>> = // a generator of DHeap
+    gen {        
+        let arity = Gen.sample 10 1 Arb.generate<HeapArity> |> List.head
+        // how to pass in the size parameter, although we could fix for arity
+        //let arity = Gen.sized <| fun s -> Gen.sample s 1 Arb.generate<HeapArity> 
+        
+        let! order = Gen.oneof [ gen { return MinKey }; gen { return MaxKey }]
+        // same as
+        //let! order = Gen.frequency  [ (1, gen { return MinKey }); (1, gen { return MaxKey }) ]        
+        
+        let cap = Gen.sample 128 1 Arb.generate<Capacity> |> List.head
+        return DHeap.empty arity order cap
+    }
+
+// no shrinker
+let heapArb: Arbitrary<DHeap<IComparable>> = Arb.fromGen genHeap
+
+// we could make a shrinker that changes arity down to binary. 
+//let shrinkHeap: (DHeap<IComparable> -> seq<DHeap<IComparable>>) = seq {return [] }
+//let heapArbWithShrinker: Arbitrary<DHeap<IComparable>> = Arb.fromGenShrink genHeap shrinkHeap
+
+
+// what about a DHeap with contents? Access `sized` info and use ofSeq on the 'T type
+// to be generated with Gen.sample thesize count Arb.generate<'T>?
+// how to control the length or that is done for us...?
+
+// ?
+//type MyCustomThingy = 
+//    static member Blah { new Arbitrary<Blah> ... }
+//Arb.register<MyCustomThingy>()
+//Gen.sample 10 10 Arb.generate<MyCustomThingy> 
+
+// The computation expression 'gen' can build a custom generator as can Gen module functions.
+// Shrinkers are 'a -> seq<'a> - just use core seq {...} computation expression etc.
+// An Arbitrary<'a> instance packages a generator and shrinker together to be used in properties. 
+// FsCheck also allows you to register Arbitrary instances in a Type to Arbitrary dictionary. 
+// This dictionary is used to find an arbitrary instance for properties that have arguments, 
+// based on the argument's type.
+
+
+
+
+// Note fuchu testPropertyWithConfig just uses a config and calls FsCheck.Check.One
+// as a testCase via callling `testProperty`
+//let testPropertyWithConfig (config: Config) name property = 
+//        let config =
+//            { config with
+//                Runner = wrapRunner config.Runner }
+//        testCase name <|
+//            fun _ ->
+//                ignore Runner.init.Value
+//                FsCheck.Check.One(name, config, property)
+    
+//let testProperty name = testPropertyWithConfig config name
+
 
 let intGen = Arb.generate<int>
 Gen.sample 3 10 intGen
@@ -73,22 +150,3 @@ type AdditionSpecification =
         add 42 0 = add 0 42 
 
 Check.QuickAll<AdditionSpecification>()
-
-
-module Test1 =
-    [<AutoOpen>]
-    module FooModule =     // why bother with this wrapper when it is auto-opened?
-        type Foo = private { A: int; B: bool }
-        [<RequireQualifiedAccess; CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
-        module Foo = 
-            let make n = {A=n; B=true}
-    type Foo = FooModule.Foo  // after opening Test1 we can do Foo.make 11  => FSI_0002+Test1+FooModule+Foo
-    // without this still Foo.make 11 => FSI_0002+Test1+FooModule+Foo
-
-module Test2 =
-    
-    type Foo = private { A: int; B: bool }
-    [<RequireQualifiedAccess; CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
-    module Foo = 
-        let make n = {A=n; B=true}
-    //type Foo = FooModule.Foo

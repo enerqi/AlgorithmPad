@@ -179,7 +179,7 @@ module Heaps =
         let ofSeq (arity: HeapArity) (minMaxType: HeapRootOrdering) (capacity: Capacity) (items : 'T seq) : DHeap<'T> = 
             makeDheap arity minMaxType capacity (Some items)
                      
-        // Return a new empty DHeap.
+        /// Return a new empty DHeap.
         let empty (arity: HeapArity) (minMaxType: HeapRootOrdering) (capacity: Capacity) : DHeap<'T> = 
             makeDheap arity minMaxType capacity None
            
