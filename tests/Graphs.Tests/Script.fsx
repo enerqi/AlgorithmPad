@@ -41,20 +41,28 @@ Gen.oneof // randomly choose one of these generators
 open FsCheck.GenBuilder // gen computation expression
 let genHeap<'T when 'T : comparison> : Gen<DHeap<IComparable>> = // a generator of DHeap
     gen {        
-        let arity = Gen.sample 10 1 Arb.generate<HeapArity> |> List.head
-        // how to pass in the size parameter, although we could fix for arity
-        //let arity = Gen.sized <| fun s -> Gen.sample s 1 Arb.generate<HeapArity> 
+        let! arity = Arb.generate<HeapArity>
         
-        let! order = Gen.oneof [ gen { return MinKey }; gen { return MaxKey }]
+        //let! order = Gen.oneof [ gen { return MinKey }; gen { return MaxKey }]
+        let! order = Arb.generate<HeapRootOrdering>
         // same as
         //let! order = Gen.frequency  [ (1, gen { return MinKey }); (1, gen { return MaxKey }) ]        
         
-        let cap = Gen.sample 128 1 Arb.generate<Capacity> |> List.head
-        return DHeap.empty arity order cap
+        //let cap = Gen.sample 128 1 Arb.generate<Capacity> |> List.head
+        let! cap = Arb.generate<Capacity>
+
+        let! contents = Gen.listOf Arb.generate<IComparable>
+
+        if List.length contents > 0 then
+            return DHeap.ofSeq arity order cap (Seq.ofList contents)
+        else
+            return DHeap.empty arity order cap
     }
 
 // no shrinker
 let heapArb: Arbitrary<DHeap<IComparable>> = Arb.fromGen genHeap
+
+
 
 // we could make a shrinker that changes arity down to binary. 
 //let shrinkHeap: (DHeap<IComparable> -> seq<DHeap<IComparable>>) = seq {return [] }
@@ -64,6 +72,8 @@ let heapArb: Arbitrary<DHeap<IComparable>> = Arb.fromGen genHeap
 // what about a DHeap with contents? Access `sized` info and use ofSeq on the 'T type
 // to be generated with Gen.sample thesize count Arb.generate<'T>?
 // how to control the length or that is done for us...?
+// maybe it should just be the one generator and if size is zero then so be it empty?
+// 
 
 // ?
 //type MyCustomThingy = 
