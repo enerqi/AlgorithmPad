@@ -7,7 +7,7 @@ module Generation =
     open Chessie.ErrorHandling
 
     /// Transform a pair string of integers e.g. "1 2" and return a result of the tuple of the integer values
-    let extractHeader (header: string) : GraphResult<int* int> = 
+    let extractHeader (header: string) : GraphResult<int * int> = 
         trial {
             let! nums = tryF (fun _ -> header.Split() |> Array.map int) (string >> ParsingFailure)            
             let pair = 
@@ -63,6 +63,6 @@ module Generation =
 
 
     /// Parse a line-oriented string representation from a file to create a graph
-    let readGraphFromFile (isDirected: bool) (filePath:string) : GraphResult<Graph> = 
+    let readGraphFromFile (isDirected: bool) (filePath: string) : GraphResult<Graph> = 
         tryF (fun _ -> File.ReadLines(filePath)) FileAccessFailure
         >>= readGraph isDirected

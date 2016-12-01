@@ -39,10 +39,10 @@ Arb.registerByType
 Gen.oneof // randomly choose one of these generators
 
 open FsCheck.GenBuilder // gen computation expression
-let genHeap<'T when 'T : comparison> : Gen<DHeap<IComparable>> = // a generator of DHeap
+let genHeap : Gen<DHeap<int>> = // a generator of DHeap
     gen {        
         let! arity = Arb.generate<HeapArity>
-        
+
         //let! order = Gen.oneof [ gen { return MinKey }; gen { return MaxKey }]
         let! order = Arb.generate<HeapRootOrdering>
         // same as
@@ -51,16 +51,25 @@ let genHeap<'T when 'T : comparison> : Gen<DHeap<IComparable>> = // a generator 
         //let cap = Gen.sample 128 1 Arb.generate<Capacity> |> List.head
         let! cap = Arb.generate<Capacity>
 
-        let! contents = Gen.listOf Arb.generate<IComparable>
+        let! contents = Gen.listOf Arb.generate<int>
 
         if List.length contents > 0 then
             return DHeap.ofSeq arity order cap (Seq.ofList contents)
         else
             return DHeap.empty arity order cap
     }
+type HeapGenerators = 
+    static member DHeap() =
+        { new Arbitrary<DHeap<int>>() with
+              override this.Generator = genHeap
+              override this.Shrinker t = Seq.empty }
+Arb.register<HeapGenerators>() 
 
 // no shrinker
-let heapArb: Arbitrary<DHeap<IComparable>> = Arb.fromGen genHeap
+let heapArb: Arbitrary<DHeap<int>> = Arb.fromGen genHeap
+
+Gen.sample 10 10 genHeap
+Gen.sample 0 10 Arb.generate<DHeap<int>>
 
 
 

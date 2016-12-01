@@ -66,6 +66,9 @@ module Heaps =
         let isEmpty (dheap: DHeap<'T>) : bool = 
             dheap.Heap.Count = 0
 
+        /// Return the HeapRootOrdering of the dheap priority queue
+        let order (dheap: DHeap<'T>) : HeapRootOrdering = 
+            dheap.Order
 
         /// Convert a power of two number into its value as a power of two integer exponent
         let private asPowerOfTwoExponent (n: int) : int = 
@@ -146,13 +149,8 @@ module Heaps =
 
         /// Inserts everything in the items seq into an *empty* dheap.
         let private heapifyItems (dheap: DHeap<'T>) (items: 'T seq) = 
-            // We would use a simpler ```Seq.iter (fun item -> insert dheap item) items```
-            // if we want a convenience bulk insert on a non-empty heap.
-            if not(isEmpty dheap) then
-                failwith "Programming logic error - heapify should only be used on an empty heap."
-            dheap.Heap.AddRange(items)
-            for i = dheap.Heap.Count/2 to 1 do
-                sink dheap i
+            // Faster way to do this on a specifically empty heap is?           
+            Seq.iter (fun item -> insert dheap item) items
 
         /// Return a new DHeap optionally with the given items added
         let private makeDheap (arity: HeapArity) (minMaxType: HeapRootOrdering) (capacity: Capacity) (items : 'T seq option) : DHeap<'T> = 

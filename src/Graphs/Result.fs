@@ -11,7 +11,7 @@ module Result =
 
     /// Run the unit input function `f` and return its Result if successful else
     /// convert any exceptions to the error type with the given `exnToMessage` function.
-    let inline tryF (f: unit -> 'a) (exnToMessage: _ -> 'b) : Result<'a, 'b>= 
+    let inline tryF (f: unit -> 'a) (exnToMessage: _ -> 'b) : Result<'a, 'b> = 
         try
             f() |> ok
         with 
