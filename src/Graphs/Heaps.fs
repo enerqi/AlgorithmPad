@@ -149,8 +149,15 @@ module Heaps =
 
         /// Inserts everything in the items seq into an *empty* dheap.
         let private heapifyItems (dheap: DHeap<'T>) (items: 'T seq) = 
-            // Faster way to do this on a specifically empty heap is?           
-            Seq.iter (fun item -> insert dheap item) items
+            if not(isEmpty dheap) then
+                failwith "Programming logic error - heapify should only be used on an empty heap."
+            dheap.Heap.AddRange(items)
+            // The bottom row of the balanced heap tree contains only the leaves of the tree
+            // Make sure that parent nodes have the right priority compared with children
+            // This becomes less work the greater the branching factor of the tree
+            let lastParentIndex = dheap.Heap.Count/dheap.TreeNodeChildCount
+            for i in [lastParentIndex .. -1 .. 0] do            
+                sink dheap i
 
         /// Return a new DHeap optionally with the given items added
         let private makeDheap (arity: HeapArity) (minMaxType: HeapRootOrdering) (capacity: Capacity) (items : 'T seq option) : DHeap<'T> = 
