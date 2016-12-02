@@ -293,7 +293,12 @@ module HeapTestUtils =
         | Removal
         | Replacement of int
 
-    let arePriorityOrdered (order: Heaps.HeapRootOrdering) elements : bool = 
+    type FetchAction = 
+        | FetchExtract
+        | FetchReplacement of int 
+        | FetchPeek
+            
+    let areElementsPriorityOrdered (order: Heaps.HeapRootOrdering) elements : bool = 
         let comparer = 
             match order with 
             | Heaps.MinKey -> fun (a, b) -> a <= b
@@ -302,7 +307,7 @@ module HeapTestUtils =
         |> Seq.pairwise
         |> Seq.forall comparer
     
-    let emptyHeapAndCheckIsPriorityOrdered heap : bool = 
+    let emptyHeapAndCheckIsPriorityOrdered (heap: Heaps.DHeap<int>) : bool = 
         let order = Heaps.DHeap.order heap
         let elemsCount = Heaps.DHeap.size heap                
         let removeElementOrFailTest = 
@@ -311,7 +316,15 @@ module HeapTestUtils =
         let elems = 
             [1..elemsCount] 
             |> List.map removeElementOrFailTest                 
-        arePriorityOrdered order elems
+        areElementsPriorityOrdered order elems
+
+    let applyHeapActions (heap: Heaps.DHeap<int>) (heapInsertExtractActions: InsertExtractAction list) =
+        let updateHeap (action: InsertExtractAction) = 
+            match action with
+            | Insertion(value) -> Heaps.DHeap.insert heap value
+            | Removal -> Heaps.DHeap.extractHighestPriority heap |> ignore
+            | Replacement(value) -> Heaps.DHeap.extractHighestPriorityAndInsert heap value |> ignore
+        List.iter updateHeap heapInsertExtractActions
 
     
 
@@ -375,20 +388,27 @@ let heapTests =
                 Heaps.DHeap.highestPriority heap |> ignore
                 Heaps.DHeap.size heap = initialSize && Heaps.DHeap.isEmpty heap = initialEmpty
                 
-        testPropertyWithConfig {Config.Quick with MaxTest=10000; EndSize=512} "Elements inserted come out in order" <|
+        testPropertyWithConfig {Config.Quick with MaxTest=1000; EndSize=512} "Elements inserted come out in order" <|
             fun (heap: Heaps.DHeap<int>) ->
                 emptyHeapAndCheckIsPriorityOrdered heap
 
-        testPropertyWithConfig {Config.Quick with MaxTest=10000; EndSize=1024} "After creation and further randomly ordered inserts/extractions elements come out in order" <|
-            fun (heap: Heaps.DHeap<int>) (heapUpdateActions: InsertExtractAction list) ->
-                let updateHeap action = 
-                    match action with
-                    | Insertion(value) -> Heaps.DHeap.insert heap value
-                    | Removal -> Heaps.DHeap.extractHighestPriority heap |> ignore
-                    | Replacement(value) -> Heaps.DHeap.extractHighestPriorityAndInsert heap value |> ignore
-                List.iter updateHeap heapUpdateActions
+        testPropertyWithConfig {Config.Quick with MaxTest=1000; EndSize=1024} 
+            "After creation and further randomly ordered inserts/extractions elements come out in order" <|
+            fun (heap: Heaps.DHeap<int>) (heapInsertExtractActions: InsertExtractAction list) ->
+                applyHeapActions heap heapInsertExtractActions
                 emptyHeapAndCheckIsPriorityOrdered heap
 
+        testPropertyWithConfig {Config.Quick with MaxTest=1000} 
+            "Fetch operations on a non-empty heap succeed and operations on an empty heap produce a heap failure" <|
+            fun (heap: Heaps.DHeap<int>) (fetchAction: FetchAction) ->
+                let initiallyEmpty = Heaps.DHeap.isEmpty heap
+                let result = 
+                    match fetchAction with
+                    | FetchExtract -> Heaps.DHeap.extractHighestPriority heap 
+                    | FetchReplacement(newKey) -> Heaps.DHeap.extractHighestPriorityAndInsert heap newKey
+                    | FetchPeek -> Heaps.DHeap.highestPriority heap
+                let isHeapFailure = failed result 
+                (initiallyEmpty && isHeapFailure) || ((not initiallyEmpty) && (not isHeapFailure))           
     ]
 
 
