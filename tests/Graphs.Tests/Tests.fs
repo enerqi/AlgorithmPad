@@ -398,7 +398,7 @@ let heapTests =
                 applyHeapActions heap heapInsertExtractActions
                 emptyHeapAndCheckIsPriorityOrdered heap
 
-        testPropertyWithConfig {Config.Quick with MaxTest=1000} 
+        testPropertyWithConfig {Config.Quick with MaxTest=1000; EndSize=1} 
             "Fetch operations on a non-empty heap succeed and operations on an empty heap produce a heap failure" <|
             fun (heap: Heaps.DHeap<int>) (fetchAction: FetchAction) ->
                 let initiallyEmpty = Heaps.DHeap.isEmpty heap
