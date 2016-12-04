@@ -64,6 +64,7 @@
   <Import Project="..\..\.paket\paket.targets" />
   <ItemGroup>
     <Compile Include="HeapTests.fs" />
+    <Compile Include="DisjointSetTests.fs" />
     <Compile Include="Tests.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
