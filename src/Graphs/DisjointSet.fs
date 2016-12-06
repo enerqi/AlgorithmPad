@@ -119,6 +119,11 @@ module DisjointSetModule =
             else 
                 p
 
+        /// Return the size of the range of EntryIds (0 to size-1) supported by the disjoint set. 
+        /// For example, a size of 10 means EntryId 0 up to EntryId 9 are the only valid Ids.
+        let size (disjointSet: DisjointSet) : int = 
+            disjointSet.Forest.Count
+
         /// Union the two subsets of `p` and `q`
         let union (disjointSet: DisjointSet) (p: EntryId) (q: EntryId) : DisjointSetResult<unit> = 
             let forest = disjointSet.Forest
