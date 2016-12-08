@@ -82,8 +82,7 @@ module DisjointSetModule =
         let private seedForest (forest: Forest) (newSize: int) : unit = 
             // If an entry already exists in the array then we assume that it is already seeded and in use.
             let forestPopulation = forest.Count
-            let toSeedCount = newSize - forestPopulation
-            for i = forestPopulation to (toSeedCount - 1) do 
+            for i = forestPopulation to (newSize - 1) do 
                 forest.Add(i)
 
         /// Initialise the rank information for new parts of the forest so we know that the new singleton subsets
@@ -93,7 +92,7 @@ module DisjointSetModule =
             // If an entry already exists in the array then we assume that it is already seeded and in use.
             let ranksSize = ranks.Count
             let toSeedCount = newSize - ranksSize
-            for i = ranksSize to (toSeedCount - 1) do 
+            for _ in [1..toSeedCount] do 
                 ranks.Add(1)
 
         /// Return the subset id for entry `p` within the given Forest array. 
@@ -180,7 +179,7 @@ module DisjointSetModule =
             
             let makeForest (forestSize: int) : Forest = 
                 let forest = new Forest(forestSize)
-                seedForest forest initialSize    
+                seedForest forest forestSize    
                 forest            
 
             let sizeWithUnions (unions: seq<(EntryId * EntryId)>) : int * (EntryId * EntryId) array option = 
@@ -190,8 +189,8 @@ module DisjointSetModule =
                     unificationPairs            
                     |> Stream.ofArray
                     |> Stream.maxBy calcMaxPairValue
-                    |> calcMaxPairValue
-                let sizeRequired = max initialSize (asIndex maxEntrySize)
+                    |> calcMaxPairValue                    
+                let sizeRequired = max initialSize (maxEntrySize |> asIndex |> fun i -> i + 1)
                 (sizeRequired, Some unificationPairs)
                                             
             let (forestSize, unions) = 
@@ -207,8 +206,15 @@ module DisjointSetModule =
                 { Forest = forest
                   Ranks = ranks }
 
+            let applyUnions (unionPairs: (EntryId * EntryId) array) : unit = 
+                let unionThatMustSucceed (e1, e2) : unit = 
+                    union disjointSet e1 e2
+                    |> returnOrFail 
+                    |> ignore
+                Array.iter unionThatMustSucceed unionPairs
+
             match unions with
-            | Some(unionPairs) -> unionPairs |> Array.iter (fun (entry1, entry2) -> union disjointSet entry1 entry2 |> returnOrFail)
+            | Some(unionPairs) -> applyUnions unionPairs
             | None -> ()
 
             disjointSet
