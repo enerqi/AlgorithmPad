@@ -65,11 +65,18 @@ module DisjointSetTestUtils =
         let size = DisjointSet.size disjointSet
         setsCount >= 1 && setsCount <= size        
 
-    let entryValid (e: EntryId) (maxSize: int) : bool = 
-        (int e.Index) < maxSize
+    let isEmpty (disjointSet: DisjointSet) : bool = 
+        not (hasOnePlusSubSets disjointSet)
+
+    let entryValid (e: EntryId) (maxIndex: int) : bool = 
+        (int e.Index) <= maxIndex
 
     let randomEntry (maxIndex: int) : EntryId = 
-        Gen.choose(0, maxIndex) |> Gen.sample 0 1 |> List.head |> uint32 |> EntryId
+        Gen.choose(0, maxIndex) 
+        |> Gen.sample 0 1 
+        |> List.head 
+        |> uint32 
+        |> EntryId
             
 
 open DisjointSetTestUtils
@@ -80,7 +87,7 @@ let disjointSetTests =
 
     testList "DisjointSet ADT" [
 
-        testPropertyWithConfig {Config.Quick with MaxTest=1000} 
+        testPropertyWithConfig {Config.Quick with MaxTest=250} 
             "A disjoint set has between 0 and size subsets" <|
             fun (disjointSet: DisjointSet) ->
                 let sets = subSets disjointSet
@@ -88,12 +95,12 @@ let disjointSetTests =
                 let size = DisjointSet.size disjointSet
                 setsCount >= 0 && setsCount <= size
 
-        testPropertyWithConfig {Config.Quick with MaxTest=1000} 
+        testPropertyWithConfig {Config.Quick with MaxTest=250} 
             "A disjoint set has has 1+ subsets if non-zero sized" <|
             fun (disjointSet: DisjointSet) ->
                 not (sizeOnePlusCondition disjointSet) || hasOnePlusSubSets disjointSet
 
-        testPropertyWithConfig {Config.Quick with MaxTest=1000} 
+        testPropertyWithConfig {Config.Quick with MaxTest=250} 
             "An increase size operation updates size to be max (size newSize) - never a smaller size" <|
             fun (disjointSet: DisjointSet) (newSize: uint32) ->
                 let sizeInitial = DisjointSet.size disjointSet
@@ -106,7 +113,15 @@ let disjointSetTests =
                 else 
                     sizeUpdated = newSize'
 
-        testPropertyWithConfig {Config.Quick with MaxTest=1000}
+        testPropertyWithConfig {Config.Quick with MaxTest=250} 
+            "An increase size operation does not change the original sub set memberships, only adds new subsets." <|
+            fun (disjointSet: DisjointSet) (newSize: uint32) ->
+                let mappings = subSetMappings disjointSet                                             
+                DisjointSet.increaseSize disjointSet (Size newSize)                
+                let mappings' = subSetMappings disjointSet
+                mappings = Array.take (Array.length mappings) mappings'
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
             "An increase size operation adds a new subset for each increase in the valid EntryId range." <|
             fun (disjointSet: DisjointSet) (newSize: uint32) ->
                 let sizeInitial = DisjointSet.size disjointSet
@@ -151,15 +166,37 @@ let disjointSetTests =
                 failed result <> shouldSucceed            
 
         testPropertyWithConfig {Config.Quick with MaxTest=250}
+            "Out of range failed find, union and inSameSubset operations do not change the disjoint set." <|
+            fun (disjointSet: DisjointSet) (outOfBoundsFactor: uint32)->
+                let size = DisjointSet.size disjointSet
+                let invalidEntryId = (EntryId <| (uint32 size) + outOfBoundsFactor) 
+                let mappings = subSetMappings disjointSet
+
+                DisjointSet.union disjointSet invalidEntryId invalidEntryId |> ignore
+                DisjointSet.find disjointSet invalidEntryId |> ignore
+                DisjointSet.inSameSubset disjointSet invalidEntryId invalidEntryId |> ignore
+
+                let mappings' = subSetMappings disjointSet                                
+                mappings = mappings'
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
             "Unioning a set with its self causes no change." <|
             fun (disjointSet: DisjointSet)  (e: EntryId) ->
                 let mappings = subSetMappings disjointSet
                 DisjointSet.union disjointSet e e |> ignore
                 let mappings' = subSetMappings disjointSet                                
                 mappings = mappings'
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
+            "Find does not change the sub set memberships." <|
+            fun (disjointSet: DisjointSet)  (e: EntryId) ->
+                let mappings = subSetMappings disjointSet
+                DisjointSet.find disjointSet e |> ignore
+                let mappings' = subSetMappings disjointSet                                
+                mappings = mappings'
                                 
         testPropertyWithConfig {Config.Quick with MaxTest=250} 
-            "An entry is always in the same subset as itself" <|
+            "An entry is in the same subset as itself" <|
             fun (disjointSet: DisjointSet) (e: EntryId) ->
                 let result = DisjointSet.inSameSubset disjointSet e e
                 match result with 
@@ -173,26 +210,100 @@ let disjointSetTests =
                 let maxIndex = size - 1
                 let makeValidEntry = fun _ -> randomEntry maxIndex
 
-                let sequenceOps operations : bool =                     
+                let sequenceOps djSet : bool =          
+                           
                     let applyOp entry operation : EntryId = 
                         match operation with 
-                        | Find -> DisjointSet.find disjointSet entry 
+                        | Find -> DisjointSet.find djSet entry 
                                   |> returnOrFail
-                        | Union -> DisjointSet.union disjointSet entry (makeValidEntry()) 
+                        | Union -> DisjointSet.union djSet (makeValidEntry()) entry  
                                    |> returnOrFail
                                    |> ignore
-                                   DisjointSet.find disjointSet entry 
+                                   DisjointSet.find djSet entry 
                                    |> returnOrFail
-                        
-                    let finalEntry = List.fold applyOp (makeValidEntry()) operations
+
+                    let firstRandEntry = makeValidEntry()                        
+                    let finalEntry = List.fold applyOp firstRandEntry ops
                     entryValid finalEntry maxIndex
 
-                not (hasOnePlusSubSets disjointSet) || sequenceOps ops
+                isEmpty disjointSet || sequenceOps disjointSet
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
+            "After a successful union of a b then a b are in the same subset." <|
+            fun (disjointSet: DisjointSet) ->
+
+                let checkInSameSubsetAfterUnion = fun _ ->
+                    let size = DisjointSet.size disjointSet
+                    let maxIndex = size - 1
+                    let makeValidEntry = fun _ -> randomEntry maxIndex          
                 
+                    let a = makeValidEntry()
+                    let b = makeValidEntry()
+                    DisjointSet.union disjointSet a b 
+                    |> returnOrFail
+                    |> ignore
                 
-        // [- any union/find/sameSubset failure does not change the subSetMappings]
-        // [- size increase does not change the subSetMappings, but does add new subsets]
-        // - each union between different subsets decreases the subset count (union a b if not samesubset a b)
-        // - after union a b, then same subset a b
+                    DisjointSet.inSameSubset disjointSet a b
+                    |> returnOrFail
+
+                isEmpty disjointSet || checkInSameSubsetAfterUnion()
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
+            "After a union of a b then at most one of a b change their subset EntryId." <|
+            fun (disjointSet: DisjointSet) ->
+
+                let checkUnioningBetweenCorrectSubsets = fun _ ->
+                    let size = DisjointSet.size disjointSet
+                    let maxIndex = size - 1
+                    let makeValidEntry = fun _ -> randomEntry maxIndex          
+                
+                    let a = makeValidEntry()
+                    let b = makeValidEntry()
+                    let a_set = DisjointSet.find disjointSet a |> returnOrFail
+                    let b_set = DisjointSet.find disjointSet b |> returnOrFail
+
+                    DisjointSet.union disjointSet a b 
+                    |> returnOrFail
+                    |> ignore
+                
+                    let a_setUpdated = DisjointSet.find disjointSet a |> returnOrFail
+                    let b_setUpdated = DisjointSet.find disjointSet b |> returnOrFail
+
+                    // Testing elsewhere that they are the same subset
+                    let a_inAB = (a_setUpdated = a_set) || (a_setUpdated = b_set)
+                    let b_inAB = (b_setUpdated = a_set) || (b_setUpdated = b_set)
+                    
+                    a_inAB && b_inAB
+
+                isEmpty disjointSet || checkUnioningBetweenCorrectSubsets()
+
+        testPropertyWithConfig {Config.Quick with MaxTest=250}
+            "Unions between entries of different subsets reduce the subset count by 1." <|
+            fun (disjointSet: DisjointSet) ->
+
+                let checkSubSetCountReduction = fun _ ->
+                    let size = DisjointSet.size disjointSet
+                    let maxIndex = size - 1
+                    let makeValidEntry = fun _ -> randomEntry maxIndex
+                    let setsCount = Array.length <| subSets disjointSet
+
+                    let a = makeValidEntry()
+                    let b = makeValidEntry()
+                    let sameSubSet = DisjointSet.inSameSubset disjointSet a b
+                                     |> returnOrFail
+
+                    DisjointSet.union disjointSet a b 
+                    |> returnOrFail
+                    |> ignore
+
+                    let setsCountUpdated = Array.length <| subSets disjointSet
+
+                    if sameSubSet then 
+                        setsCount = setsCountUpdated
+                    else
+                        setsCountUpdated = setsCount - 1
+
+                isEmpty disjointSet || checkSubSetCountReduction()
+
     ]
     

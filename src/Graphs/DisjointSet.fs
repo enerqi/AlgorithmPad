@@ -1,5 +1,7 @@
 ﻿namespace Graphs
 
+open System.Diagnostics
+
 open Chessie.ErrorHandling
 open Nessos.Streams
 
@@ -18,6 +20,7 @@ module DisjointSetModule =
     and private Ranks = ResizeArray<int>
 
     /// Type safe wrapper of a disjoint set index. Valid values are between Zero and DisjointSetSize - 1.
+    [<DebuggerDisplay("EntryId {Index}")>]
     type [<Struct>] EntryId = 
         val Index : uint32
         new (index: uint32) = {Index = index}
