@@ -27,7 +27,7 @@ module Heaps =
     /// How many children per heap tree node. These arities are all powers of two.
     /// The performance trade offs are similar to those between a binary search tree and a B+ Tree.
     /// The binary heap is a common implementation, but quaternary maybe better peformance in a wider range of applications.        
-    type [<StructuralEquality; StructuralComparison>] HeapArity = 
+    type HeapArity = 
         | Binary 
         | Quaternary 
         | Octonary 

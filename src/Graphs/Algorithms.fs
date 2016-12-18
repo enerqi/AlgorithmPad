@@ -256,7 +256,7 @@ module Algorithms =
 
     /// Run a breadth first search on an unweighted graph to find the shortest path tree to
     /// all other vertices from a source vertex. 
-    let breadthFirstSearch (graph: Graph) (source: VertexId) : GraphResult<BFS> = 
+    let breadthFirstSearch (graph: Graph) (source: VertexId) : GraphResult<ShortestPaths> = 
         
         // Start of only knowing the distance to the source vertex. Every other vertex is unprocessed - None.
         let distances = Array.create (graph.VerticesCount + 1) None
@@ -291,15 +291,15 @@ module Algorithms =
     
     /// Return the shortest path from a source vertex defined by the breadth first search
     /// result data to a destination vertex.
-    let shortestPath (bfsData: BFS) (v: VertexId) : ResizeArray<VertexId> option = 
+    let shortestPath (pathData: ShortestPaths) (v: VertexId) : ResizeArray<VertexId> option = 
 
-        if bfsData.ShortestPathTree.[v.Id].IsSome then
+        if pathData.ShortestPathTree.[v.Id].IsSome then
             let path = new ResizeArray<VertexId>()
             let mutable currentPathStep = v
-            while currentPathStep <> bfsData.Source do 
+            while currentPathStep <> pathData.Source do 
                 path.Add(currentPathStep)
                 let pathIndex = currentPathStep.Id
-                match bfsData.ShortestPathTree.[pathIndex] with 
+                match pathData.ShortestPathTree.[pathIndex] with 
                 | Some(nextStep) -> currentPathStep <- nextStep
                 | None -> failwith "BFS algorithm error, reached a dead end in the path"
             
@@ -356,15 +356,55 @@ module Algorithms =
 
     /// Calculate the shortest path from a source vertex to all other vertices on weighted graph 
     /// with non-negative weights. Uses the Djikstra algorithm.
-    let nonNegativeWeightedShortestPathSearch (graph: Graph) (source: VertexId) = 
+    let nonNegativeWeightedSearch (graph: Graph) (source: VertexId) : GraphResult<ShortestPaths> = 
         
-        let distances = Array.create (graph.VerticesCount + 1) None
-        let pathTree = Array.create (graph.VerticesCount + 1) None
+        let capacity = graph.VerticesCount + 1 // accounting for the 1-based indexing and unused entry[0] 
+        let distances = Array.create capacity None
+        let pathTree = Array.create capacity None
 
         distances.[1] <- Some(Distance 0u)
 
-        //let heap = ...
+        // Use the distance values as the priority queue keys with min distance being highest priority
+        let infiniteDistance = System.UInt32.MaxValue
+        let toShortestPathKey (index: int) (distance: Distance option) : ShortestPathPriorityKey = 
+            let vertexId = VertexId index
+            let dist = match distance with 
+                       | Some d -> d
+                       | None -> (Distance infiniteDistance)
+            ShortestPathPriorityKey(dist, vertexId)
 
+        let shortestPathKeys = Stream.ofArray distances 
+                               |> Stream.mapi (fun index distanceEntry -> toShortestPathKey index distanceEntry) 
+                               |> Stream.toSeq
+        let priorityQueue = Heaps.DHeap.ofSeq Heaps.Octonary 
+                                              Heaps.MinKey 
+                                              (Heaps.Capacity <| uint64 capacity)
+                                              shortestPathKeys
+
+        let paths = {
+                Source = source
+                ShortestPathDistances = distances
+                ShortestPathTree = pathTree
+            }
+        ok paths
+        
+//        trial {
+//
+//            while Heaps.DHeap.isEmpty priorityQueue = false do
+//
+//                let! shortestPathKey = Heaps.DHeap.extractHighestPriority priorityQueue
+//
+//                let! vertex = vertexFromId graph shortestPathKey.Id
+//
+//
+//            let paths = {
+//                Source = source
+//                ShortestPathDistances = distances
+//                ShortestPathTree = pathTree
+//            }
+//            return paths
+//        }
+        
 
     /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph
     /// that may have positive or negative weights. Uses the Bellman-Ford algorithm.

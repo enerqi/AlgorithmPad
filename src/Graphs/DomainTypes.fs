@@ -26,7 +26,7 @@ module DomainTypes =
         end            
 
     /// Breadth first search results from a source vertex
-    type BFS = {
+    type ShortestPaths = {
         Source: VertexId
         ShortestPathDistances: Distance option []
         ShortestPathTree: VertexId option []
@@ -37,6 +37,16 @@ module DomainTypes =
             val Distance: uint32
             new(d: uint32) = {Distance = d}
         end    
+
+    type ShortestPathPriorityKey = 
+        struct
+            val Distance: Distance
+            val Id: VertexId
+            new(dist, id) = {
+                Distance = dist
+                Id = id
+            }
+        end
             
     type GraphFailure =
         | GraphAccessFailure of GraphAccessFailure
