@@ -16,3 +16,5 @@ module Graph =
         // that is only there to make indexing simpler when using 1 based indices for the 
         // serialised graph file formats
         Seq.ofArray graph.Vertices |> Seq.skip 1
+
+    

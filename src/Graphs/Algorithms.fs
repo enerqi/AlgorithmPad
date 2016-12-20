@@ -9,6 +9,7 @@ module Algorithms =
 
     open Chessie.ErrorHandling
     open Graph   
+    open Heaps
 
     type VisitedSet(graph: Graph) = 
         let flags = new BitArray(int32 graph.Vertices.Length)
@@ -359,51 +360,62 @@ module Algorithms =
     let nonNegativeWeightedSearch (graph: Graph) (source: VertexId) : GraphResult<ShortestPaths> = 
         
         let capacity = graph.VerticesCount + 1 // accounting for the 1-based indexing and unused entry[0] 
-        let distances = Array.create capacity None
-        let pathTree = Array.create capacity None
+                
+        let distances = Array.create capacity None // distance to all vertices from the source
+        let pathTree = Array.create capacity None // parent vertices in shortest path tree for all vertexIds
 
+        // The source is zero distance away, whilst all other vertices are considered infinite distance to begin with
         distances.[1] <- Some(Distance 0u)
 
         // Use the distance values as the priority queue keys with min distance being highest priority
         let infiniteDistance = System.UInt32.MaxValue
+        let distanceValue distanceOpt : Distance = 
+            defaultArg distanceOpt (Distance infiniteDistance)
+
         let toShortestPathKey (index: int) (distance: Distance option) : ShortestPathPriorityKey = 
-            let vertexId = VertexId index
-            let dist = match distance with 
-                       | Some d -> d
-                       | None -> (Distance infiniteDistance)
-            ShortestPathPriorityKey(dist, vertexId)
+            ShortestPathPriorityKey(distanceValue distance, VertexId index)
 
         let shortestPathKeys = Stream.ofArray distances 
                                |> Stream.mapi (fun index distanceEntry -> toShortestPathKey index distanceEntry) 
                                |> Stream.toSeq
-        let priorityQueue = Heaps.DHeap.ofSeq Heaps.Octonary 
-                                              Heaps.MinKey 
-                                              (Heaps.Capacity <| uint64 capacity)
-                                              shortestPathKeys
+        let priorityQueue = DHeap.ofSeq Octonary // 8 entries fit in one 64 byte cache line
+                                        MinKey 
+                                        (Capacity <| uint64 capacity)
+                                        shortestPathKeys
+        trial {
 
-        let paths = {
+            while not (DHeap.isEmpty priorityQueue) do
+
+                // The vertex with the minimum distance from source is removed from the queue (and not put back)
+                let! shortestPathKey = DHeap.extractHighestPriority priorityQueue |> heapToGraphResult
+                let! vertex = vertexFromId graph shortestPathKey.Id
+
+                // Look at all the edges linking out of the vertex
+                for neighbourId in vertex.Neighbours do 
+                    // does this edge find a shorter path than currently known about for (source -> neighbour vertex)?
+                    let distV = distances.[vertex.Identifier.Id] |> distanceValue
+                    let distNeighbour = distances.[neighbourId.Id] |> distanceValue
+                    let edgeCostVertToNeighbour = 10u
+                    let vertToNeighbourCost = Distance <| distV.Distance + edgeCostVertToNeighbour
+
+                    if distNeighbour > vertToNeighbourCost then
+                        distances.[neighbourId.Id] <- Some vertToNeighbourCost
+                        pathTree.[neighbourId.Id] <- Some vertex.Identifier
+                        // At this point the Djikstra algorithm changes the priority queue to reprioritise
+                        // neighbour vertex that has a new distance value
+                        // As the "Priority Queues and Dijkstra’s Algorithm" paper http://www.cs.sunysb.edu/~rezaul/papers/TR-07-54.pdf
+                        // shows, the cost of just adding a new entry with the changed priority is often less
+                        // than the cost of making the priority queue more complicated to support the decreaseKey (change priority)
+                        // operation.
+                        // So, we just add a new entry in the priority queue, with higher priority than it had before
+                        DHeap.insert priorityQueue (ShortestPathPriorityKey(vertToNeighbourCost, neighbourId))
+
+            return {
                 Source = source
                 ShortestPathDistances = distances
                 ShortestPathTree = pathTree
             }
-        ok paths
-        
-//        trial {
-//
-//            while Heaps.DHeap.isEmpty priorityQueue = false do
-//
-//                let! shortestPathKey = Heaps.DHeap.extractHighestPriority priorityQueue
-//
-//                let! vertex = vertexFromId graph shortestPathKey.Id
-//
-//
-//            let paths = {
-//                Source = source
-//                ShortestPathDistances = distances
-//                ShortestPathTree = pathTree
-//            }
-//            return paths
-//        }
+        }
         
 
     /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph

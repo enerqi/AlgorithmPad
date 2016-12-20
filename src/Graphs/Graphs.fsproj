@@ -64,6 +64,7 @@
     <Compile Include="Heaps.fs" />
     <Compile Include="DisjointSet.fs" />
     <Compile Include="DomainTypes.fs" />
+    <Compile Include="ResultHandling.fs" />
     <Compile Include="Graph.fs" />
     <Compile Include="Generation.fs" />
     <Compile Include="Algorithms.fs" />

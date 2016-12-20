@@ -38,7 +38,7 @@ module DisjointSetModule =
 
 
     /// A mutable disjoint set (also known as "union find") data structure. It tracks a set of elements
-    /// partitioned into a number fo disjoint subsets. In this Disjoint Set implementation the elements
+    /// partitioned into a number of disjoint subsets. In this Disjoint Set implementation the elements
     /// are numbers (EntryIds) in the range 0 to size of set - 1. The user must maintain their own separate 
     /// symbol table or other way of mapping the numbers (EntryIds) to other types. Operations supported:
     /// - `find`, `union` and `inSameSubset` all have amortized roughly small constant overhead - O(alpha(n)) 

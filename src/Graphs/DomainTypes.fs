@@ -53,8 +53,12 @@ module DomainTypes =
         | FileAccessFailure of Exception
         | ParsingFailure of string
         | VisualisationFailure of Exception
+        | AlgorithmFailure of AlgorithmFailure
     and GraphAccessFailure = 
         | InvalidVertexId of VertexId
+    and AlgorithmFailure =
+        | PriorityQueueFailure of Heaps.HeapFailure
+        | UnionFindFailure of DisjointSetFailure
 
     /// Main functional style error handling result type used throughout the Graphs namespace
     type GraphResult<'TSuccess> = Result<'TSuccess, GraphFailure>  
