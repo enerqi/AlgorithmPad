@@ -17,13 +17,20 @@ module DomainTypes =
     and Vertex = {    
         Identifier: VertexId
         Neighbours: ResizeArray<VertexId>
+        NeighbourEdgeWeights: ResizeArray<Weight> option
     } 
     /// Type safe wrapper of vertex integer id
     and VertexId = 
         struct
             val Id: int
             new(id: int) = {Id = id}
-        end            
+        end       
+    and Weight = 
+        struct 
+            val Value: int
+            new(weight: int) = {Value = weight}
+        end
+             
 
     /// Breadth first search results from a source vertex
     type ShortestPaths = {

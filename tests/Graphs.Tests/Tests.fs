@@ -74,12 +74,12 @@ module private TestUtils =
         | Bad [e] -> predicate e
         | _ -> false        
 
-    let isParsingFailure (gf: GraphFailure) = 
+    let isParsingFailure (gf: GraphFailure) : bool = 
         match gf with 
         | ParsingFailure(_) -> true
         | _ -> false
 
-    let isGraphAccessFailure (invalidVertexId: int) result = 
+    let inline isGraphAccessFailure (invalidVertexId: int) (result: GraphResult<'TSuccess>) : bool = 
         match result with 
         | Bad [GraphAccessFailure (InvalidVertexId vid)] -> vid.Id = invalidVertexId
         | _ -> false
@@ -140,15 +140,39 @@ let generationTests =
         testCase "Header parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
             Generation.extractHeader "a b" |> expectOneFailedWith isParsingFailure |> should be True
 
-        testCase "Vertex Id pair parsing" <| fun _ ->
-            Generation.extractVertexIdPair "1 2" 
+        testCase "Edge pair parsing" <| fun _ ->
+            Generation.extractEdge "1 2" 
             |> returnOrFail |> should equal (VertexId 1, VertexId 2)
 
-        testCase "Vertex Id returns ParsingFailure wrong number of inputs" <| fun _ ->
-            Generation.extractVertexIdPair "1 2 3" |> expectOneFailedWith isParsingFailure |> should be True
+        testCase "Edge pair parsing returns ParsingFailure on negative numbers" <| fun _ ->
+            Generation.extractEdge "1 -2" |> expectOneFailedWith isParsingFailure |> should be True
 
-        testCase "Vertex Id pair parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
-            Generation.extractVertexIdPair "a b" |> expectOneFailedWith isParsingFailure |> should be True
+        testCase "Edge pair parsing returns ParsingFailure on wrong number of inputs" <| fun _ ->
+            Generation.extractEdge "1 2 3" |> expectOneFailedWith isParsingFailure |> should be True
+
+        testCase "Edge pair parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
+            Generation.extractEdge "a b" |> expectOneFailedWith isParsingFailure |> should be True
+
+        testCase "Weighted edge pair parsing" <| fun _ ->
+            Generation.extractWeightedEdge "1 2 -44"
+            |> returnOrFail |> should equal (VertexId 1, VertexId 2, Weight -44)
+
+        testCase "Weighted edge pair parsing returns ParsingFailure on negative vertex Ids" <| fun _ ->
+            Generation.extractWeightedEdge "1 -2 100" 
+            |> expectOneFailedWith isParsingFailure |> should be True
+
+        testCase "Weighted edge pair parsing returns ParsingFailure on wrong number of inputs" <| fun _ ->
+            Generation.extractWeightedEdge "1 2" 
+            |> expectOneFailedWith isParsingFailure |> should be True
+
+        testCase "Weighted edge pair parsing returns ParsingFailure if it cannot parse to numbers" <| fun _ ->
+            Generation.extractWeightedEdge "1 2 w"
+            |> expectOneFailedWith isParsingFailure |> should be True
+
+        testCase "read graph with out of bounds vertices returns GraphAccessFailure" <| fun _ ->
+            let isDirected = false
+            Generation.readGraphFromFile isDirected (test_graph_file "out_of_bounds_vertices_graph.txt")
+            |> isGraphAccessFailure 999 |> should be True
                         
         testCase "read undirected graph works" <| fun _ ->
             let isDirected = false

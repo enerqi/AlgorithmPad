@@ -16,12 +16,18 @@ module Generation =
                 | _ -> fail (ParsingFailure <| sprintf "Failed to extract header pair fom string: %s" header) 
             return! pair
         }
-        
-    /// Transform a pair string of integers e.g. "1 2" and return result of the tuple of the VertexId values
-    let extractVertexIdPair (pairString: string) : GraphResult<VertexId * VertexId> = 
+
+    /// Transform a string of two integers e.g. "1 2" into edge vertex ids. The ids must be >= 0.
+    let extractEdge (pairString: string) : GraphResult<VertexId * VertexId> = 
         match pairString.Split() with
-        | [|v1; v2|] -> tryF (fun _ -> (VertexId (int v1), VertexId (int v2))) (string >> ParsingFailure)
-        | _ -> fail (ParsingFailure <| sprintf "Failed to extract pair from vertex pair string: %s" pairString)
+        | [|v1; v2|] -> tryF (fun _ -> (VertexId (uint32 v1 |> int), VertexId (uint32 v2 |> int))) (string >> ParsingFailure)
+        | _ -> fail (ParsingFailure <| sprintf "Failed to extract edge pair from vertex pair string: %s" pairString)
+        
+    /// Transform a string of three integers e.g. "1 2" or "1 2 3" into edge vertex ids plus an edge weight. The ids must be >= 0.
+    let extractWeightedEdge (pairString: string) : GraphResult<VertexId * VertexId * Weight> = 
+        match pairString.Split() with
+        | [|v1; v2; w|] -> tryF (fun _ -> (VertexId (uint32 v1 |> int), VertexId (uint32 v2 |> int), Weight (int w))) (string >> ParsingFailure)
+        | _ -> fail (ParsingFailure <| sprintf "Failed to extract edge pair and weight from string: %s" pairString)
             
 
     /// Parse a line-oriented string representation to create a graph
@@ -35,24 +41,55 @@ module Generation =
         
         let header, edges = Seq.head dataLines, Seq.tail dataLines
 
+        // Might be better to let the user say whether or not the graph is weighted as this may fail to parse
+        // but the graph may still be built up with other weighted entries
+        let isWeightedGraph = edges |> Seq.head |> extractWeightedEdge |> (failed >> not)
+
+        let makeEmptyNeighbourEdgeWeights = fun _ ->
+            if isWeightedGraph then 
+                Some(new ResizeArray<Weight>())
+            else 
+                None
+
         trial {
             // The entry at index 0 will be ignored. Keeping it saves on offset calculations.
             // 1-based indices. F# inclusive [x..y]
             let! (verticesCount, edgesCount) = extractHeader header
             let vertexArray = [|for vIndex in [0..verticesCount] do
                                 yield { Identifier = VertexId vIndex;
-                                        Neighbours = new ResizeArray<VertexId>() } |]                
-            let pairs = edges |> Seq.map extractVertexIdPair
-            let addEdge (verticesArray: Vertex[]) (v1: VertexId) (v2: VertexId) = 
-                verticesArray.[v1.Id].Neighbours.Add(v2)
-                // v2 -> v1 for bi-directionality
-                if not isDirected then 
-                    verticesArray.[v2.Id].Neighbours.Add(v1) 
-            
-            for pairResult in pairs do
-                match pairResult with 
-                | Ok ((v1, v2), _) -> addEdge vertexArray v1 v2                                
-                | Bad e -> printfn "Ignoring vertex pair that could not parse: %A" e 
+                                        Neighbours = new ResizeArray<VertexId>()
+                                        NeighbourEdgeWeights = makeEmptyNeighbourEdgeWeights() } |]   
+
+            let addEdge (verticesArray: Vertex[]) (v1: VertexId) (v2: VertexId) (w: Weight option) : GraphResult<unit> =                         
+                trial {
+
+                    // get Vertex via this function to check the Id is in bounds.
+                    let! vertex1 = Graph.vertexFromArray verticesArray v1
+                    vertex1.Neighbours.Add(v2)
+                    // v2 -> v1 for bi-directionality
+                    if not isDirected then 
+                        let! vertex2 = Graph.vertexFromArray verticesArray v2
+                        vertex2.Neighbours.Add(v1)
+
+                    match w with 
+                    | Some(weight) -> vertex1.NeighbourEdgeWeights 
+                                        |> Option.get 
+                                        |> (fun weights -> weights.Add(weight))
+                    | None -> ()
+                }
+
+            if isWeightedGraph then 
+                let edgeData = edges |> Seq.map extractWeightedEdge
+                for edge in edgeData do
+                    match edge with 
+                    | Ok ((v1, v2, w), _) -> do! addEdge vertexArray v1 v2 (Some w)
+                    | Bad e -> printfn "Ignoring vertex pair that could not parse: %A" e 
+            else
+                let edgeData = edges |> Seq.map extractEdge                          
+                for edge in edgeData do
+                    match edge with 
+                    | Ok ((v1, v2), _) -> do! addEdge vertexArray v1 v2 None
+                    | Bad e -> printfn "Ignoring vertex pair that could not parse: %A" e                            
 
             return 
                 { VerticesCount = verticesCount; 

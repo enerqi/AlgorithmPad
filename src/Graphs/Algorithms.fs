@@ -65,15 +65,24 @@ module Algorithms =
     /// An undirected graph is returned unchanged.
     let reverseDirectedGraph (graph: Graph) : Graph = 
         if graph.IsDirected then
+            let isWeightedGraph = graph.Vertices.[1].NeighbourEdgeWeights |> Option.isSome
             let reverseGraph = {graph with Vertices = 
                                            [|for v in graph.Vertices do
                                              yield {Identifier = v.Identifier; 
-                                                    Neighbours = new ResizeArray<VertexId>()}|]}            
-            for vertex in verticesSeq graph do                                   
-                for neighbourVertexId in vertex.Neighbours do 
+                                                    Neighbours = new ResizeArray<VertexId>()
+                                                    NeighbourEdgeWeights = if isWeightedGraph then
+                                                                               Some(new ResizeArray<Weight>())
+                                                                           else
+                                                                               None}|]}            
+            for vertex in verticesSeq graph do                                                                     
+                for index, neighbourVertexId in Seq.zip [0..vertex.Neighbours.Count] vertex.Neighbours do  // inclusive range but zips fine                                 
                     if neighbourVertexId.Id < graph.VerticesCount then // In case the graph has some invalid entries
                         reverseGraph.Vertices.[neighbourVertexId.Id].Neighbours.Add(vertex.Identifier)
-            
+                        if isWeightedGraph then
+                            let neighboursWeights = reverseGraph.Vertices.[neighbourVertexId.Id].NeighbourEdgeWeights |> Option.get
+                            let vertWeights = vertex.NeighbourEdgeWeights |> Option.get
+                            neighboursWeights.Add(vertWeights.[index])
+                                        
             reverseGraph
         else
             graph
@@ -391,12 +400,13 @@ module Algorithms =
                 let! vertex = vertexFromId graph shortestPathKey.Id
 
                 // Look at all the edges linking out of the vertex
-                for neighbourId in vertex.Neighbours do 
+                for weightIndex, neighbourId in Seq.zip [0..vertex.Neighbours.Count] vertex.Neighbours do 
                     // does this edge find a shorter path than currently known about for (source -> neighbour vertex)?
                     let distV = distances.[vertex.Identifier.Id] |> distanceValue
                     let distNeighbour = distances.[neighbourId.Id] |> distanceValue
-                    let edgeCostVertToNeighbour = 10u
-                    let vertToNeighbourCost = Distance <| distV.Distance + edgeCostVertToNeighbour
+                    let weights = vertex.NeighbourEdgeWeights |> Option.get 
+                    let edgeCostVertToNeighbour = weights.[weightIndex]
+                    let vertToNeighbourCost = Distance <| distV.Distance + (uint32 edgeCostVertToNeighbour.Value)
 
                     if distNeighbour > vertToNeighbourCost then
                         distances.[neighbourId.Id] <- Some vertToNeighbourCost

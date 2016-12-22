@@ -5,10 +5,14 @@ module Graph =
 
     open Chessie.ErrorHandling
 
+    let internal vertexFromArray (vertArray: Vertex array) (v: VertexId) : GraphResult<Vertex> = 
+        tryF (fun _ -> vertArray.[v.Id]) 
+             (fun _ -> GraphAccessFailure (InvalidVertexId v))
+
+
     /// Access a vertex in the graph via a VertexId.
     let vertexFromId (graph: Graph) (v: VertexId) : GraphResult<Vertex> =
-        tryF (fun _ -> graph.Vertices.[v.Id]) 
-             (fun _ -> GraphAccessFailure (InvalidVertexId v))
+        vertexFromArray graph.Vertices v
                     
     /// Return sequence of all the vertices in the graph.
     let verticesSeq (graph: Graph) : seq<Vertex> = 
