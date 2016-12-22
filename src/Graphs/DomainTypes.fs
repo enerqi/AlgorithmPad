@@ -63,6 +63,7 @@ module DomainTypes =
         | AlgorithmFailure of AlgorithmFailure
     and GraphAccessFailure = 
         | InvalidVertexId of VertexId
+        | UnweightedGraph
     and AlgorithmFailure =
         | PriorityQueueFailure of Heaps.HeapFailure
         | UnionFindFailure of DisjointSetFailure

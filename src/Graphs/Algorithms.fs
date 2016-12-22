@@ -400,13 +400,12 @@ module Algorithms =
                 let! vertex = vertexFromId graph shortestPathKey.Id
 
                 // Look at all the edges linking out of the vertex
-                for weightIndex, neighbourId in Seq.zip [0..vertex.Neighbours.Count] vertex.Neighbours do 
+                let! neighbouringLinks = neighboursWithWeights vertex
+                for neighbourId, edgeCostToNeighbour in neighbouringLinks do
                     // does this edge find a shorter path than currently known about for (source -> neighbour vertex)?
                     let distV = distances.[vertex.Identifier.Id] |> distanceValue
                     let distNeighbour = distances.[neighbourId.Id] |> distanceValue
-                    let weights = vertex.NeighbourEdgeWeights |> Option.get 
-                    let edgeCostVertToNeighbour = weights.[weightIndex]
-                    let vertToNeighbourCost = Distance <| distV.Distance + (uint32 edgeCostVertToNeighbour.Value)
+                    let vertToNeighbourCost = Distance <| distV.Distance + (uint32 edgeCostToNeighbour.Value)
 
                     if distNeighbour > vertToNeighbourCost then
                         distances.[neighbourId.Id] <- Some vertToNeighbourCost
