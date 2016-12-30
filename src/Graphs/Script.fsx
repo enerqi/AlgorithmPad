@@ -4,7 +4,9 @@
 #r @"Streams/lib/net45/Streams.dll" 
 #load "Result.fs"
 #load "Heaps.fs"
+#load "DisjointSet.fs"
 #load "DomainTypes.fs"
+#load "ResultHandling.fs"
 #load "Graph.fs"
 #load "Generation.fs"
 #load "Algorithms.fs"
@@ -35,7 +37,7 @@ let shellOpenFileWithDefaultApplication (fileName: string) : GraphResult<int> =
 
 let makeShowGraphViz (vizName: string) (graph: Graph) : GraphResult<string> =             
     trial {
-        let graphDef = Visualisation.toDotGraphDescriptionLanguage graph
+        let! graphDef = Visualisation.toDotGraphDescriptionLanguage graph
         let outFilePathNoExtension = Path.Combine(outdir, vizName)
         let! imagePath = Visualisation.makeGraphVisualisation graphDef outFilePathNoExtension 
         let! processExitCode = shellOpenFileWithDefaultApplication imagePath
@@ -63,6 +65,11 @@ let g_scc = Generation.readGraphFromFile true ssc_file
 let linear_file = test_graph_file "linearly_ordered_graph.txt"
 let g_linear = Generation.readGraphFromFile true linear_file 
 
+let weighted_file = test_graph_file "weighted_undirected_graph.txt"
+let g_weighted = Generation.readGraphFromFile false weighted_file
+
+let g_web = Generation.readGraphFromFile true <| test_graph_file "web_directed_graph.txt"
+
 lift Algorithms.reverseDirectedGraph g_dag
 lift Algorithms.isDAG g_dag
 lift Algorithms.dfsPrePostOrderNumbers g_dag
@@ -71,6 +78,7 @@ lift Algorithms.stronglyConnectedComponents g_dag
 lift Algorithms.topologicalOrdering g_dag
 
 lift Visualisation.toDotGraphDescriptionLanguage g_undir
+lift Visualisation.toDotGraphDescriptionLanguage g_weighted
 
 let rev_scc = g_scc |> lift Algorithms.reverseDirectedGraph
 let s_comps = g_scc |> lift Algorithms.stronglyConnectedComponents
@@ -79,3 +87,5 @@ rev_scc |> lift (makeShowGraphViz "reverse_strong_components")
 g_scc   |> lift (makeShowGraphViz  "strong_components")
 g_dag   |> lift (makeShowGraphViz "dag")
 g_undir |> lift (makeShowGraphViz "undir")
+g_weighted |> lift (makeShowGraphViz "weighted")
+//g_web |> lift (makeShowGraphViz "web")

@@ -1,5 +1,6 @@
 namespace Graphs
 
+open System
 open System.Collections.Generic 
 open System.Collections
 open Nessos.Streams
@@ -65,23 +66,20 @@ module Algorithms =
     /// An undirected graph is returned unchanged.
     let reverseDirectedGraph (graph: Graph) : Graph = 
         if graph.IsDirected then
-            let isWeightedGraph = graph.Vertices.[1].NeighbourEdgeWeights |> Option.isSome
-            let reverseGraph = {graph with Vertices = 
-                                           [|for v in graph.Vertices do
-                                             yield {Identifier = v.Identifier; 
-                                                    Neighbours = new ResizeArray<VertexId>()
-                                                    NeighbourEdgeWeights = if isWeightedGraph then
-                                                                               Some(new ResizeArray<Weight>())
-                                                                           else
-                                                                               None}|]}            
+                                           // Clear all weights and rebuild in the reverse copy 
+            let reverseGraph = {graph with Weights = new Dictionary<_, _>(graph.Weights.Count)
+                                           // Copy vertex Id but clear neighbours
+                                           Vertices = [|for v in graph.Vertices do
+                                                         yield {Identifier = v.Identifier; 
+                                                                Neighbours = new ResizeArray<VertexId>()}|]}                                        
+                                                                                                      
             for vertex in verticesSeq graph do                                                                     
-                for index, neighbourVertexId in Seq.zip [0..vertex.Neighbours.Count] vertex.Neighbours do  // inclusive range but zips fine                                 
+                for neighbourVertexId in vertex.Neighbours do
                     if neighbourVertexId.Id < graph.VerticesCount then // In case the graph has some invalid entries
                         reverseGraph.Vertices.[neighbourVertexId.Id].Neighbours.Add(vertex.Identifier)
-                        if isWeightedGraph then
-                            let neighboursWeights = reverseGraph.Vertices.[neighbourVertexId.Id].NeighbourEdgeWeights |> Option.get
-                            let vertWeights = vertex.NeighbourEdgeWeights |> Option.get
-                            neighboursWeights.Add(vertWeights.[index])
+                        if graph.IsWeighted then
+                            let w = graph.Weights.[(Source vertex.Identifier, Destination neighbourVertexId)]
+                            reverseGraph.Weights.[(Source neighbourVertexId, Destination vertex.Identifier)] <- w
                                         
             reverseGraph
         else
@@ -234,34 +232,80 @@ module Algorithms =
         }
             
 
-    /// Return a set of all the edge (source, destination) vertex id pairs
-    let edgesSet (graph: Graph) : Set<int * int> = 
+    /// Return a set of all the edges
+    let edgesSet (graph: Graph) : GraphResult<Set<Edge>> = 
             
         /// The function that given a source vertex index and a destination vertex id returns
         /// (source index, destination index) pair        
-        let edgeFrom : (int -> VertexId -> int * int) = 
+        let edgeFrom : (VertexId -> VertexId -> Weight option -> Edge) = 
             if graph.IsDirected then
-                (fun (vertexIndex: int) (neighbourVertexId: VertexId) ->
-                    (vertexIndex, neighbourVertexId.Id))                    
+                (fun (vId: VertexId) (neighbourVertexId: VertexId) (w: Weight option) ->
+                    match w with
+                    | Some(weight) -> Edge(Source vId, Destination neighbourVertexId, weight)
+                    | None -> Edge(Source vId, Destination neighbourVertexId))
             else
                 // For undirected graphs we need to order the pairs so that the set
                 // can remove duplicates - (1, 2) is really the same as (2, 1) when undirected
                 let orderEdgeVertices (a, b) = 
-                    if a <= b then (a, b) else (b, a)                
-                (fun (vertexIndex: int) (neighbourVertexId: VertexId) ->
-                    orderEdgeVertices (vertexIndex, neighbourVertexId.Id))                       
+                    if a <= b then (a, b) else (b, a)      
+                              
+                (fun (vId: VertexId) (neighbourVertexId: VertexId) (w: Weight option) ->
+                    orderEdgeVertices (vId, neighbourVertexId)
+                    |> 
+                    // Source/Destination is arbitrary for undirected graphs, but needs to be consistently ordered
+                    (fun (va, vb) -> 
+                        match w with 
+                        | Some(weight) -> Edge(Source va, Destination vb, weight)
+                        | None -> Edge(Source va, Destination vb)))
 
-        let allEdgesFrom (vertexIndex: int, neighbours: seq<VertexId>) =
-           seq { for v in neighbours do 
-                 yield edgeFrom vertexIndex v }
-           |> Stream.cast // seq to stream
+
+        let allEdgesFrom (vertexIndex: int, neighbours: seq<VertexId>) : GraphResult<Stream<Edge>> =
+            let vertexId = VertexId vertexIndex
+            if graph.IsWeighted then                
+                trial {                    
+                    let! vertex = vertexFromId graph vertexId
+                    let! neighbouringLinks = neighboursWithWeights graph vertex
+
+                    let edgesToNeighbours : seq<Edge> =
+                        seq { for neighbourId, weight in neighbouringLinks do
+                              yield edgeFrom vertexId neighbourId (Some weight)}                    
+                    let edgeStream = 
+                        edgesToNeighbours |> Stream.cast
+                    return edgeStream
+                }
+                
+            else
+                seq { for neighbourId in neighbours do 
+                      yield edgeFrom vertexId neighbourId None }
+                |> Stream.cast // seq to stream
+                |> ok
+
+        // Stream collect === flatmap : (T -> Stream<R>) -> Stream T -> Stream R
+        // Result collect : seq<Result<T>> -> Result<T list>
+        let (edgesFromNeighbours: Stream<GraphResult<Stream<Edge>>>) = 
+                graph.Vertices
+                |> Stream.ofArray
+                |> Stream.mapi (fun index v -> (index, v.Neighbours)) // -> Stream<int * ResizeArray<VertexId>>)
+                // Cannot flatmap as need to convert the Stream<GraphResult<Stream<Edge>>> into a single Result
+                |> Stream.map allEdgesFrom
+
+        let collectResults (es: Stream<GraphResult<Stream<Edge>>>) : GraphResult<Stream<Edge> list> = 
+            es
+            |> Stream.toSeq
+            |> collect
+
+        trial {
+            let! (edges: Stream<Edge> list) = collectResults edgesFromNeighbours
+            let (edgesSet: Set<Edge>) = 
+                edges 
+                |> Stream.ofList // -> Stream Stream Edge
+                |> Stream.toSeq // -> Seq Stream Edge
+                |> Stream.concat // -> Stream Edge
+                |> Stream.toSeq // -> Seq Edge
+                |> Set.ofSeq    
             
-        graph.Vertices
-        |> Stream.ofArray
-        |> Stream.mapi (fun index v -> (index, v.Neighbours))
-        |> Stream.flatMap allEdgesFrom
-        |> Stream.toSeq        
-        |> Set.ofSeq
+            return edgesSet
+        }
           
 
     /// Run a breadth first search on an unweighted graph to find the shortest path tree to
@@ -400,7 +444,7 @@ module Algorithms =
                 let! vertex = vertexFromId graph shortestPathKey.Id
 
                 // Look at all the edges linking out of the vertex
-                let! neighbouringLinks = neighboursWithWeights vertex
+                let! neighbouringLinks = neighboursWithWeights graph vertex
                 for neighbourId, edgeCostToNeighbour in neighbouringLinks do
                     // does this edge find a shorter path than currently known about for (source -> neighbour vertex)?
                     let distV = distances.[vertex.Identifier.Id] |> distanceValue
@@ -430,10 +474,40 @@ module Algorithms =
     /// Calculate the shortest path from a source vertex to all other vertices on a weighted graph
     /// that may have positive or negative weights. Uses the Bellman-Ford algorithm.
     let anyWeightsShortestPathSearch (graph: Graph) (source: VertexId) = 
-        2
+        raise (NotImplementedException "")
 
-    let minimumSpanningTreeKruskal (graph: Graph) = 
-        3
+    /// Return the minimum spanning tree of a graph using Kruskal's algorithm
+    /// The minimum spanning tree is the subset of edges that connects all vertices together with
+    /// the minimum total weight. Weights can be positive or negative.
+    /// * Fails if the graph is unweighted and fails if the graph is directed.
+    let minimumSpanningTreeKruskal (graph: Graph) : GraphResult<ResizeArray<Edge>> = 
+        
+        if graph.IsDirected then 
+            fail (GraphInvalidTypeFailure Directed)
+        else if not graph.IsWeighted then
+            fail (GraphInvalidTypeFailure Unweighted)
+        else           
+            // Each vertex in the graph starts out in its own singleton connected component subset
+            let connectedComponentSets = DisjointSet.make (Size <| uint32 graph.VerticesCount + 1u) // 1-based index handling, sigh
+            let mst = new ResizeArray<Edge>()
+
+            trial {
+                // For all edges in the graph in increasing weight order                
+                // Immutable F# Sets (AVL tree based) are sorted in natural increasing order. 
+                let! edges = edgesSet graph
+                let weightOrderedEdges = edges |> Seq.sortBy (fun edge -> edge.Weight)
+                for edge in weightOrderedEdges do 
+                    let src = EntryId (uint32 edge.Source.VId.Id)
+                    let dst = EntryId (uint32 edge.Destination.VId.Id)
+                    let! areVerticesLinked = DisjointSet.inSameSubset connectedComponentSets src dst
+                                             |> disjointToGraphResult   
+                    if not areVerticesLinked then
+                        mst.Add(edge)
+                        do! DisjointSet.union connectedComponentSets src dst
+                            |> disjointToGraphResult
+
+                return mst
+            }
 
     let minimumSpanningTreePrim (graph: Graph) = 
-        4
+        raise (NotImplementedException "")

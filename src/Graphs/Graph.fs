@@ -4,6 +4,7 @@
 module Graph = 
 
     open Chessie.ErrorHandling
+    open Nessos.Streams
 
     let internal vertexFromArray (vertArray: Vertex array) (v: VertexId) : GraphResult<Vertex> = 
         tryF (fun _ -> vertArray.[v.Id]) 
@@ -23,13 +24,13 @@ module Graph =
 
     /// Return a sequence of all the neighbour vertexId + weight pairs from a vertex.
     /// Fails if the graph is unweighted.
-    let neighboursWithWeights (v: Vertex) : GraphResult<seq<VertexId * Weight>> = 
+    let neighboursWithWeights (graph: Graph) (v: Vertex) : GraphResult<seq<VertexId * Weight>> = 
         
-        let zipNeighboursAndWeights = fun _ -> 
-            let weights = v.NeighbourEdgeWeights |> Option.get
-            Seq.zip v.Neighbours weights
-
-        tryF zipNeighboursAndWeights (fun _ -> GraphAccessFailure UnweightedGraph)
-
-
-        
+        if graph.IsWeighted then 
+            v.Neighbours
+            |> Stream.ofResizeArray
+            |> Stream.map (fun neighbourId -> (neighbourId, graph.Weights.[(Source v.Identifier, Destination neighbourId)]))
+            |> Stream.toSeq
+            |> ok
+        else
+            fail (GraphInvalidTypeFailure Unweighted)

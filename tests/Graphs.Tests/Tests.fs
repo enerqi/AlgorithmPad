@@ -29,6 +29,10 @@ module private TestUtils =
         let isDirected = true
         Generation.readGraphFromFile isDirected (test_graph_file "directed_graph.txt")
 
+    let load_weighted_undirected_test_graph = 
+        let isDirected = false
+        Generation.readGraphFromFile isDirected (test_graph_file "weighted_undirected_graph.txt")
+
     let neighbours graph vertexIdNumber = 
         VertexId vertexIdNumber 
         |> Graph.vertexFromId graph 
@@ -43,6 +47,14 @@ module private TestUtils =
                      |> Array.sort
             return ns            
         }
+
+    let edgeWeight graph source destination = 
+        let src = Source <| VertexId source
+        let dst = Destination <| VertexId destination
+        graph.Weights.[(src, dst)]
+
+    let makeEdge source destination weight = 
+        Edge(Source <| VertexId source, Destination <| VertexId destination, Weight weight)
         
     let inline factorial (n: int): bigint = 
         if n < 0 then 
@@ -82,6 +94,11 @@ module private TestUtils =
     let inline isGraphAccessFailure (invalidVertexId: int) (result: GraphResult<'TSuccess>) : bool = 
         match result with 
         | Bad [GraphAccessFailure (InvalidVertexId vid)] -> vid.Id = invalidVertexId
+        | _ -> false
+
+    let isGraphInvalidTypeFailure invalidType (result: GraphResult<'TSuccess>) : bool = 
+        match result with 
+        | Bad [GraphInvalidTypeFailure invalidType] -> true
         | _ -> false
                       
  
@@ -124,6 +141,14 @@ let graphTypeTests =
                 return hasVertexWithIdZero
             }            
             |> returnOrFail |> should be False
+
+        testCase "neighbours with weights returns Failure on unweighted graph" <| fun _ ->
+            trial {
+                let! g = load_undirected_test_graph
+                let! v1 = Graph.vertexFromId g (VertexId 1)
+                return! Graph.neighboursWithWeights g v1
+            }
+            |> isGraphInvalidTypeFailure Unweighted |> should be True
     ]
 
 [<Tests>]
@@ -134,15 +159,23 @@ let generationTests =
             Generation.extractHeader "1 2" 
             |> returnOrFail |> should equal (1, 2)
 
+        testCase "Whitespace is allowed before/inbetween/after numbers in the Header" <| fun _ ->
+            Generation.extractHeader " 44   123 " 
+            |> returnOrFail |> should equal (44, 123)
+
         testCase "Header parsing returns ParsingFailure wrong number of inputs" <| fun _ ->
             Generation.extractHeader "1 2 3" |> expectOneFailedWith isParsingFailure |> should be True
             
         testCase "Header parsing returns ParsingFailure if cannot parse to numbers" <| fun _ ->
             Generation.extractHeader "a b" |> expectOneFailedWith isParsingFailure |> should be True
-
+                    
         testCase "Edge pair parsing" <| fun _ ->
             Generation.extractEdge "1 2" 
             |> returnOrFail |> should equal (VertexId 1, VertexId 2)
+
+        testCase "Whitespace is allowed before/inbetween/after numbers in Edge pair parsing" <| fun _ ->
+            Generation.extractEdge " 44   123 " 
+            |> returnOrFail |> should equal (VertexId 44, VertexId 123)
 
         testCase "Edge pair parsing returns ParsingFailure on negative numbers" <| fun _ ->
             Generation.extractEdge "1 -2" |> expectOneFailedWith isParsingFailure |> should be True
@@ -156,6 +189,10 @@ let generationTests =
         testCase "Weighted edge pair parsing" <| fun _ ->
             Generation.extractWeightedEdge "1 2 -44"
             |> returnOrFail |> should equal (VertexId 1, VertexId 2, Weight -44)
+
+        testCase "Whitespace is allowed before/inbetween/after numbers in Weighted edge pair parsing" <| fun _ ->
+            Generation.extractWeightedEdge " 44   123 -42 " 
+            |> returnOrFail |> should equal (VertexId 44, VertexId 123, Weight -42)
 
         testCase "Weighted edge pair parsing returns ParsingFailure on negative vertex Ids" <| fun _ ->
             Generation.extractWeightedEdge "1 -2 100" 
@@ -173,6 +210,27 @@ let generationTests =
             let isDirected = false
             Generation.readGraphFromFile isDirected (test_graph_file "out_of_bounds_vertices_graph.txt")
             |> isGraphAccessFailure 999 |> should be True
+
+        testCase "Can read graph data with empty or whitespace only lines" <| fun _ ->            
+            let g_data = """
+            5 8
+            1 3 2
+                
+            1 4 4
+            1 2 3
+            2 3 1
+                
+            2 5 4
+            3 4 3
+            3 5 2
+            4 5 2
+                
+            """
+            let datalines = g_data.Split '\n' |> Seq.ofArray
+            let isDirected = false
+            Generation.readGraph isDirected datalines
+            |> returnOrFail
+            |> ignore
                         
         testCase "read undirected graph works" <| fun _ ->
             let isDirected = false
@@ -206,7 +264,30 @@ let generationTests =
                 adjacents 4 |> should equal [3]
                 adjacents 5 |> should equal [1; 3; 4]
             }
-            |> returnOrFail            
+            |> returnOrFail         
+            
+        testCase "read weighted graph works" <| fun _ ->
+            let isDirected = false
+            trial {
+                let! g = Generation.readGraphFromFile isDirected (test_graph_file "weighted_undirected_graph.txt") 
+                g.VerticesCount |> should equal 4
+                g.EdgesCount |> should equal 5
+                g.IsDirected |> should be False
+                let adjacents = 
+                    neighbourIdNumbers g >> returnOrFail
+                adjacents 1 |> should equal [2; 4]
+                adjacents 2 |> should equal [1; 3; 4]
+                adjacents 3 |> should equal [2; 4]
+                adjacents 4 |> should equal [1; 2; 3]
+
+                let getWeight = edgeWeight g
+                getWeight 2 1 |> should equal (Weight 11)
+                getWeight 4 3 |> should equal (Weight 12)
+                getWeight 1 4 |> should equal (Weight 13)
+                getWeight 2 4 |> should equal (Weight 12)
+                getWeight 3 2 |> should equal (Weight 10)
+            }
+            |> returnOrFail      
     ]   
 
 [<Tests>]
@@ -232,7 +313,7 @@ let visualisationTests =
             }"
             trial {
                 let! g = load_undirected_test_graph
-                return Visualisation.toDotGraphDescriptionLanguage g
+                return! Visualisation.toDotGraphDescriptionLanguage g
             }
             |> returnOrFail |> checkDotLanguage expected
 
@@ -249,9 +330,24 @@ let visualisationTests =
             }"        
             trial {
                 let! g = load_directed_test_graph
-                return Visualisation.toDotGraphDescriptionLanguage g
+                return! Visualisation.toDotGraphDescriptionLanguage g
             }
             |> returnOrFail |> checkDotLanguage expected
+
+        testCase "weighted graph" <| fun _ ->
+            let expected = """graph {
+                1 -- 2 [label="11"]
+                1 -- 4 [label="13"]
+                2 -- 3 [label="10"]
+                2 -- 4 [label="12"]
+                3 -- 4 [label="12"]
+            }"""
+            trial {
+                let! g = load_weighted_undirected_test_graph
+                return! Visualisation.toDotGraphDescriptionLanguage g
+            }
+            |> returnOrFail |> checkDotLanguage expected 
+            
     ]
 
 
@@ -291,7 +387,51 @@ let algorithmTests =
                     Algorithms.pathExists g v1 v2 |> returnOrFail |> should be True
             }
             |> returnOrFail
-    ]
+
+        testCase "Kruskal MST returns failure on a directed graph as it requres an undirected graph" <| fun _ ->
+            trial {
+                let! g = load_directed_test_graph
+                return! Algorithms.minimumSpanningTreeKruskal g
+            }
+            |> isGraphInvalidTypeFailure Directed |> should be True
+
+        testCase "Kruskal MST returns failure on an unweighted graph" <| fun _ ->
+            trial {
+                let! g = load_undirected_test_graph
+                return! Algorithms.minimumSpanningTreeKruskal g
+            }
+            |> isGraphInvalidTypeFailure Unweighted |> should be True
+
+        testCase "Kruskal MST Example" <| fun _ ->            
+            
+            let spanningTree: Edge [] = 
+                trial {
+                    let g_data = """5 8
+                    1 3 2
+                    1 4 4
+                    1 2 3
+                    2 3 1
+                    2 5 4
+                    3 4 3
+                    3 5 2
+                    4 5 2
+                    """
+                    let dataLines = g_data.Split '\n'
+                    let isDirected = false
+                    let! g = Generation.readGraph isDirected dataLines
+                    let! mst = Algorithms.minimumSpanningTreeKruskal g 
+                    mst.Sort() 
+                    return mst.ToArray()
+                }
+                |> returnOrFail
+
+            let expected = [|makeEdge 1 3 2; 
+                             makeEdge 2 3 1;
+                             makeEdge 3 5 2;
+                             makeEdge 4 5 2|]
+
+            spanningTree |> should equal expected
+    ]    
 
        
 

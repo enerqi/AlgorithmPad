@@ -12,7 +12,7 @@ module Visualisation =
     open Algorithms 
 
     /// Transform a graph to its dot graph description language string
-    let toDotGraphDescriptionLanguage (graph: Graph) : string = 
+    let toDotGraphDescriptionLanguage (graph: Graph) : GraphResult<string> = 
         let descriptionOpen = 
             if graph.IsDirected then
                 "digraph {"
@@ -20,24 +20,32 @@ module Visualisation =
                 "graph {"
         let descriptionClose = "}"
         
-        let edgeToString = 
+        let edgeToString : (Edge -> string) = 
             let edgeSyntax = 
                 if graph.IsDirected then
                     " -> "
                 else 
                     " -- "
-            (fun (v1, v2) -> 
-                string v1 + edgeSyntax + string v2)
+            (fun edge -> 
+                let unweightedStr = 
+                    (string edge.Source.VId.Id) + edgeSyntax + string (edge.Destination.VId.Id)
+                match edge.Weight with
+                | Some(weight) -> unweightedStr + (sprintf """ [label="%A"]""" weight.Value)
+                | None -> unweightedStr)
 
-        let edges = edgesSet graph
-        let edgeDescriptions = edges 
-                               |> Seq.map edgeToString
-                               |> Seq.map (fun s -> "    " + s)
+        trial {
+            let! edges = edgesSet graph
+            let edgeDescriptions = edges 
+                                   |> Seq.map edgeToString
+                                   |> Seq.map (fun s -> "    " + s)
 
-        seq { yield descriptionOpen
-              yield! edgeDescriptions
-              yield descriptionClose}
-        |> String.concat "\n"
+            let translation = 
+                seq { yield descriptionOpen
+                      yield! edgeDescriptions
+                      yield descriptionClose}
+                |> String.concat "\n"            
+            return translation
+        }
 
 
     /// Run the external 'dot' process to generate a graph image file
