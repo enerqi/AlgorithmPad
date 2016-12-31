@@ -15,7 +15,7 @@ open Swensen.Unquote.Operators // [Under the hood extras]
 
 module private TestUtils =
     let test_graph_file file_name = 
-        let testFilesDir = __SOURCE_DIRECTORY__
+        let testFilesDir = __SOURCE_DIRECTORY__ + "/resources"
         let path = Path.GetFullPath (Path.Combine(testFilesDir, file_name))
         if not <| File.Exists(path) then 
             failwith <| sprintf "test file %s not found" path
@@ -376,6 +376,43 @@ let algorithmTests =
         |> Array.ofSeq 
         |> Array.map (fun v -> v.Identifier)
 
+    // Put the source/destination order of an edge in a common order (for ease of undirected edges comparison)
+    let toCanonicalUndirectedEdge (edge: Edge) : Edge = 
+        if edge.Source.VId > edge.Destination.VId then
+            let src = Source edge.Destination.VId
+            let dst = Destination edge.Source.VId
+            match edge.Weight with
+            | Some(w) -> Edge(src, dst, w)
+            | _ -> Edge(src, dst)            
+        else
+            edge
+
+    let spanningTreeExample (mstFunc: Graph -> GraphResult<ResizeArray<Edge>>) : GraphResult<Edge[]> =                        
+            trial {
+                let g_data = """5 8
+                1 3 2
+                1 4 4
+                1 2 3
+                2 3 1
+                2 5 4
+                3 4 3
+                3 5 2
+                4 5 2
+                """
+                let dataLines = g_data.Split '\n'
+                let isDirected = false
+                let! g = Generation.readGraph isDirected dataLines
+                let! mst = mstFunc g 
+                mst.Sort() 
+                let arr = mst.ToArray()
+                return Array.map toCanonicalUndirectedEdge arr
+            }
+    
+    let spanningTreeExampleExpected = [|makeEdge 1 3 2; 
+                                        makeEdge 2 3 1;
+                                        makeEdge 3 5 2;
+                                        makeEdge 4 5 2|]
+
     testList "algorithms" [
         testCase "pathExists dfs v1 -> v2" <| fun _ ->
             trial {
@@ -402,35 +439,35 @@ let algorithmTests =
             }
             |> isGraphInvalidTypeFailure Unweighted |> should be True
 
-        testCase "Kruskal MST Example" <| fun _ ->            
+        testCase "Prim MST returns failure on a directed graph as it requres an undirected graph" <| fun _ ->
+            trial {
+                let! g = load_directed_test_graph
+                return! Algorithms.minimumSpanningTreePrim g
+            }
+            |> isGraphInvalidTypeFailure Directed |> should be True
+
+        testCase "Prim MST returns failure on an unweighted graph" <| fun _ ->
+            trial {
+                let! g = load_undirected_test_graph
+                return! Algorithms.minimumSpanningTreePrim g
+            }
+            |> isGraphInvalidTypeFailure Unweighted |> should be True
+
+        testCase "Kruskal MST Example" <| fun _ ->      
+        
+            let mst = 
+                spanningTreeExample Algorithms.minimumSpanningTreeKruskal
+                |> returnOrFail      
+
+            mst |> should equal spanningTreeExampleExpected
+
+        testCase "Prim MST Example" <| fun _ ->            
             
-            let spanningTree: Edge [] = 
-                trial {
-                    let g_data = """5 8
-                    1 3 2
-                    1 4 4
-                    1 2 3
-                    2 3 1
-                    2 5 4
-                    3 4 3
-                    3 5 2
-                    4 5 2
-                    """
-                    let dataLines = g_data.Split '\n'
-                    let isDirected = false
-                    let! g = Generation.readGraph isDirected dataLines
-                    let! mst = Algorithms.minimumSpanningTreeKruskal g 
-                    mst.Sort() 
-                    return mst.ToArray()
-                }
+            let mst = 
+                spanningTreeExample Algorithms.minimumSpanningTreePrim
                 |> returnOrFail
 
-            let expected = [|makeEdge 1 3 2; 
-                             makeEdge 2 3 1;
-                             makeEdge 3 5 2;
-                             makeEdge 4 5 2|]
-
-            spanningTree |> should equal expected
+            mst |> should equal spanningTreeExampleExpected
     ]    
 
        

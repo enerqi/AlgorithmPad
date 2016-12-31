@@ -476,38 +476,96 @@ module Algorithms =
     let anyWeightsShortestPathSearch (graph: Graph) (source: VertexId) = 
         raise (NotImplementedException "")
 
-    /// Return the minimum spanning tree of a graph using Kruskal's algorithm
-    /// The minimum spanning tree is the subset of edges that connects all vertices together with
-    /// the minimum total weight. Weights can be positive or negative.
-    /// * Fails if the graph is unweighted and fails if the graph is directed.
-    let minimumSpanningTreeKruskal (graph: Graph) : GraphResult<ResizeArray<Edge>> = 
-        
+    /// Return a failed GraphResult if not an undireced and weighted graph.
+    let internal ensureUndirectedAndWeighted(graph: Graph) : GraphResult<unit> = 
         if graph.IsDirected then 
             fail (GraphInvalidTypeFailure Directed)
         else if not graph.IsWeighted then
             fail (GraphInvalidTypeFailure Unweighted)
-        else           
+        else
+            ok ()
+
+    /// Return the minimum spanning tree of a graph using Kruskal's algorithm    
+    /// The minimum spanning tree is the subset of edges that connects all vertices together with
+    /// the minimum total weight. Weights can be positive or negative.
+    /// * Fails if the graph is unweighted and fails if the graph is directed.
+    /// Complexity O(|E| log |V|). Simpler and faster for fairly sparse graph than Prim's algorithm 
+    let minimumSpanningTreeKruskal (graph: Graph) : GraphResult<ResizeArray<Edge>> = 
+        
+        trial {
+            do! ensureUndirectedAndWeighted graph
+
             // Each vertex in the graph starts out in its own singleton connected component subset
             let connectedComponentSets = DisjointSet.make (Size <| uint32 graph.VerticesCount + 1u) // 1-based index handling, sigh
-            let mst = new ResizeArray<Edge>()
+            let mst = new ResizeArray<Edge>(graph.EdgesCount)
 
-            trial {
-                // For all edges in the graph in increasing weight order                
-                // Immutable F# Sets (AVL tree based) are sorted in natural increasing order. 
-                let! edges = edgesSet graph
-                let weightOrderedEdges = edges |> Seq.sortBy (fun edge -> edge.Weight)
-                for edge in weightOrderedEdges do 
-                    let src = EntryId (uint32 edge.Source.VId.Id)
-                    let dst = EntryId (uint32 edge.Destination.VId.Id)
-                    let! areVerticesLinked = DisjointSet.inSameSubset connectedComponentSets src dst
-                                             |> disjointToGraphResult   
-                    if not areVerticesLinked then
-                        mst.Add(edge)
-                        do! DisjointSet.union connectedComponentSets src dst
-                            |> disjointToGraphResult
+            // For all edges in the graph in increasing weight order                
+            // Immutable F# Sets (AVL tree based) are sorted in natural increasing order. 
+            let! edges = edgesSet graph
+            let weightOrderedEdges = edges |> Seq.sortBy (fun edge -> edge.Weight)
+            for edge in weightOrderedEdges do 
+                let src = EntryId (uint32 edge.Source.VId.Id)
+                let dst = EntryId (uint32 edge.Destination.VId.Id)
+                let! areVerticesLinked = DisjointSet.inSameSubset connectedComponentSets src dst
+                                            |> disjointToGraphResult   
+                if not areVerticesLinked then
+                    mst.Add(edge)
+                    do! DisjointSet.union connectedComponentSets src dst
+                        |> disjointToGraphResult
 
-                return mst
-            }
+            return mst
+        }
 
-    let minimumSpanningTreePrim (graph: Graph) = 
-        raise (NotImplementedException "")
+    /// Return the minimum spanning tree of a graph using Prim's algorithm
+    /// The minimum spanning tree is the subset of edges that connects all vertices together with
+    /// the minimum total weight. Weights can be positive or negative.
+    /// * Fails if the graph is unweighted and fails if the graph is directed.
+    /// Complexity O(|E| + log |V|). Better choice than Kruskal if the graph has lots of edges.
+    let minimumSpanningTreePrim (graph: Graph) : GraphResult<ResizeArray<Edge>> = 
+        
+        trial {
+
+            do! ensureUndirectedAndWeighted graph
+
+            let mst = new ResizeArray<Edge>(graph.EdgesCount)
+
+            let capacity = graph.VerticesCount + 1
+            let edgePriorityQueue = DHeap.empty Quaternary
+                                                MinKey 
+                                                (Capacity <| uint64 capacity)
+
+            // Lazy Prim version so we do not need a priority queue with a `decrease priority` operation
+            let vertexIdsAddedToMST = VisitedSet(graph)
+
+            let visit (vId: VertexId) : GraphResult<unit> = 
+                vertexIdsAddedToMST.Insert(vId)
+                trial {
+                    let! vertex = vertexFromId graph vId
+                    let! weightedNeighbours = neighboursWithWeights graph vertex
+                    for neighbourId, weight in weightedNeighbours do
+                        if not <| vertexIdsAddedToMST.Contains(neighbourId) then
+                            let edge = Edge(Source vId, Destination neighbourId, weight)
+                            // need to tweak natural ordering of pq to sort by weight
+                            DHeap.insert edgePriorityQueue (weight, edge)
+                
+                }
+            
+            let arbitraryStartVertex = VertexId 1 // assumes the vertices are all connected somehow
+            do! visit arbitraryStartVertex
+
+            while not (DHeap.isEmpty edgePriorityQueue) do
+
+                let! (_, edge) = DHeap.extractHighestPriority edgePriorityQueue |> heapToGraphResult
+                let src, dst = edge.Source.VId, edge.Destination.VId
+
+                let addedSrc = vertexIdsAddedToMST.Contains(src)
+                let addedDst = vertexIdsAddedToMST.Contains(dst)
+                if not (addedSrc && addedDst) then
+                    mst.Add(edge)
+                    if not addedSrc then
+                        do! visit src
+                    if not addedDst then
+                        do! visit dst
+
+            return mst
+        } 

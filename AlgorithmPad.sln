@@ -1,6 +1,7 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{63297B98-5CED-492C-A5B7-A5B4F73CF142}"
 	ProjectSection(SolutionItems) = preProject
 		paket.dependencies = paket.dependencies
@@ -34,6 +35,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{ED8079DD
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Graphs.Tests", "tests\Graphs.Tests\Graphs.Tests.fsproj", "{3630C8C1-AED4-4D26-ABAD-E89EE2B424E4}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "resources", "resources", "{A93A82E1-F9B1-4563-86F9-6F8B81BE628F}"
+	ProjectSection(SolutionItems) = preProject
+		tests\Graphs.Tests\resources\directed_graph.txt = tests\Graphs.Tests\resources\directed_graph.txt
+		tests\Graphs.Tests\resources\linearly_ordered_graph.txt = tests\Graphs.Tests\resources\linearly_ordered_graph.txt
+		tests\Graphs.Tests\resources\out_of_bounds_vertices_graph.txt = tests\Graphs.Tests\resources\out_of_bounds_vertices_graph.txt
+		tests\Graphs.Tests\resources\strong_components_graph.txt = tests\Graphs.Tests\resources\strong_components_graph.txt
+		tests\Graphs.Tests\resources\undirected_graph.txt = tests\Graphs.Tests\resources\undirected_graph.txt
+		tests\Graphs.Tests\resources\web_directed_graph.txt = tests\Graphs.Tests\resources\web_directed_graph.txt
+		tests\Graphs.Tests\resources\weighted_undirected_graph.txt = tests\Graphs.Tests\resources\weighted_undirected_graph.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,5 +68,6 @@ Global
 		{83F16175-43B1-4C90-A1EE-8E351C33435D} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
 		{8E6D5255-776D-4B61-85F9-73C37AA1FB9A} = {A6A6AF7D-D6E3-442D-9B1E-58CC91879BE1}
 		{3630C8C1-AED4-4D26-ABAD-E89EE2B424E4} = {ED8079DD-2B06-4030-9F0F-DC548F98E1C4}
+		{A93A82E1-F9B1-4563-86F9-6F8B81BE628F} = {ED8079DD-2B06-4030-9F0F-DC548F98E1C4}
 	EndGlobalSection
 EndGlobal

@@ -47,7 +47,7 @@ let makeShowGraphViz (vizName: string) (graph: Graph) : GraphResult<string> =
 
 let home = Environment.GetEnvironmentVariable("HOME")
 let test_graph_file (file_name: string) : string = 
-    let dir = Path.Combine(__SOURCE_DIRECTORY__, @"../../tests/Graphs.Tests/") 
+    let dir = Path.Combine(__SOURCE_DIRECTORY__, @"../../tests/Graphs.Tests/resources/") 
     Path.Combine(dir, file_name) |> Path.GetFullPath
 
 let dag_file = test_graph_file "directed_graph.txt"

@@ -53,7 +53,7 @@ module DomainTypes =
             member private this.DebuggerDisplayProperty = 
                 match this.Weight with 
                 | Some(w) -> sprintf "Source=%d Destination=%d Weight=%d" this.Source.VId.Id this.Destination.VId.Id w.Value
-                | None -> sprintf "Source=%d Destination=%d Weight=null" this.Source.VId.Id this.Destination.VId.Id            
+                | None -> sprintf "Source=%d Destination=%d Weight=null" this.Source.VId.Id this.Destination.VId.Id         
         end
     and [<StructuredFormatDisplay("Source {VId.Id}")>] [<DebuggerDisplay("Source {VId.Id}")>]
     Source = 

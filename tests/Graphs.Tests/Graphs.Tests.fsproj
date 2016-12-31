@@ -66,17 +66,10 @@
     <Compile Include="HeapTests.fs" />
     <Compile Include="DisjointSetTests.fs" />
     <Compile Include="Tests.fs" />
+    <None Include="Script.fsx" />
     <None Include="paket.references" />
     <Content Include="App.config" />
-    <Content Include="directed_graph.txt" />
-    <Content Include="linearly_ordered_graph.txt" />
-    <Content Include="out_of_bounds_vertices_graph.txt" />
-    <Content Include="strong_components_graph.txt" />
-    <Content Include="web_directed_graph.txt" />
-    <Content Include="weighted_undirected_graph.txt" />
-    <Content Include="undirected_graph.txt" />
     <Content Include="packages.config" />
-    <None Include="Script.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Chessie">
