@@ -85,8 +85,8 @@ module DomainTypes =
             new(d: uint32) = {Distance = d}
         end    
 
-    [<StructuredFormatDisplay("PathKey Distance={Distance} VertexId={Id.Id}")>] 
-    [<DebuggerDisplay("PathKey Distance={Distance} VertexId={Id.Id}")>]
+    [<StructuredFormatDisplay("PathKey Distance={Distance} VertexId={Id}")>] 
+    [<DebuggerDisplay("PathKey Distance={Distance} VertexId={Id}")>]
     type ShortestPathPriorityKey = 
         struct
             val Distance: Distance

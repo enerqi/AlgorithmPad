@@ -101,7 +101,17 @@ module private TestUtils =
         | Bad [GraphInvalidTypeFailure invalidType] -> true
         | _ -> false
                       
+    let makeUndirectedGraph (graphDataString: string) : GraphResult<Graph> =         
+        let dataLines = graphDataString.Split '\n'
+        let isDirected = false
+        Generation.readGraph isDirected dataLines
+
+    let makeDirectedGraph (graphDataString: string) : GraphResult<Graph> =         
+        let dataLines = graphDataString.Split '\n'
+        let isDirected = true
+        Generation.readGraph isDirected dataLines
  
+
 open TestUtils
 
 
@@ -399,9 +409,7 @@ let algorithmTests =
                 3 5 2
                 4 5 2
                 """
-                let dataLines = g_data.Split '\n'
-                let isDirected = false
-                let! g = Generation.readGraph isDirected dataLines
+                let! g = makeUndirectedGraph g_data
                 let! mst = mstFunc g 
                 mst.Sort() 
                 let arr = mst.ToArray()
@@ -424,6 +432,113 @@ let algorithmTests =
                     Algorithms.pathExists g v1 v2 |> returnOrFail |> should be True
             }
             |> returnOrFail
+
+        testCase "Djikstra unique shortest path 1 -> 3" <| fun _ ->
+            let shortestPaths =
+                trial {
+                    let g_data = """
+                    4 4
+                    1 2 1
+                    4 1 2
+                    2 3 2
+                    1 3 5
+                    """
+                    // There is a unique shortest path from vertex 1 to vertex 3 in this graph (1 -> 2 -> 3), 
+                    // and it has weight 3
+                    let! g = makeDirectedGraph g_data
+                    let sourceVertex = VertexId 1
+                    return! Algorithms.nonNegativeWeightedSearch g sourceVertex
+                }
+                |> returnOrFail
+
+            // Check the sum of the weights of the shortest path to each vertex from the source vertex
+            shortestPaths.ShortestPathDistances.[1].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[1].Value |> should equal (Distance 0u)       
+            shortestPaths.ShortestPathDistances.[2].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[2].Value |> should equal (Distance 1u)      
+            shortestPaths.ShortestPathDistances.[3].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[3].Value |> should equal (Distance 3u)            
+            shortestPaths.ShortestPathDistances.[4].IsNone |> should be True // Unreachable - wrong edge direction
+
+            // The source does not have a parent in the path tree, though arguably it could point to itself.
+            shortestPaths.ShortestPathTree.[1].IsNone |> should be True
+
+            // Check the neighbour of each vertex in the shortest path from it to the source vertex            
+            shortestPaths.ShortestPathTree.[2].IsSome |> should be True
+            shortestPaths.ShortestPathTree.[2].Value |> should equal (VertexId 1)
+            shortestPaths.ShortestPathTree.[3].IsSome |> should be True
+            shortestPaths.ShortestPathTree.[3].Value |> should equal (VertexId 2)
+            shortestPaths.ShortestPathTree.[4].IsNone |> should be True
+            
+        testCase "Djikstra shortest path with two routes 1 -> 5" <| fun _ ->
+            let shortestPaths =
+                trial {
+                    let g_data = """
+                    5 9
+                    1 2 4
+                    1 3 2
+                    2 3 2
+                    3 2 1
+                    2 4 2
+                    3 5 4
+                    5 4 1
+                    2 5 3
+                    3 4 4
+                    """
+                    // There are two paths from 1 to 5 of total weight 6: 1 -> 3 -> 5 and 1 -> 3 -> 2 -> 5.
+                    let! g = makeDirectedGraph g_data
+                    let sourceVertex = VertexId 1
+                    return! Algorithms.nonNegativeWeightedSearch g sourceVertex
+                }
+                |> returnOrFail
+
+            // Check the sum of the weights of the shortest path to each vertex from the source vertex
+            shortestPaths.ShortestPathDistances.[1].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[1].Value |> should equal (Distance 0u)       
+            shortestPaths.ShortestPathDistances.[2].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[2].Value |> should equal (Distance 3u)      
+            shortestPaths.ShortestPathDistances.[3].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[3].Value |> should equal (Distance 2u)            
+            shortestPaths.ShortestPathDistances.[4].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[4].Value |> should equal (Distance 5u)
+            shortestPaths.ShortestPathDistances.[5].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[5].Value |> should equal (Distance 6u)
+
+            // The source does not have a parent in the path tree, though arguably it could point to itself.
+            shortestPaths.ShortestPathTree.[1].IsNone |> should be True
+
+            // Check the neighbour of each vertex in the shortest path from it to the source vertex            
+            shortestPaths.ShortestPathTree.[2].IsSome |> should be True
+            shortestPaths.ShortestPathTree.[2].Value |> should equal (VertexId 3)
+            shortestPaths.ShortestPathTree.[3].IsSome |> should be True
+            shortestPaths.ShortestPathTree.[3].Value |> should equal (VertexId 1)
+            shortestPaths.ShortestPathTree.[4].IsSome |> should be True
+            shortestPaths.ShortestPathTree.[4].Value |> should equal (VertexId 2)
+            shortestPaths.ShortestPathTree.[5].IsSome |> should be True
+
+            let v5Parent = shortestPaths.ShortestPathTree.[5].Value
+            (v5Parent = (VertexId 2) || v5Parent = (VertexId 3)) |> should be True
+
+        testCase "Djikstra shortest path with no route 3 -> 2." <| fun _ ->
+            let shortestPaths =
+                trial {
+                    let g_data = """
+                    3 3
+                    1 2 7
+                    1 3 5
+                    2 3 2
+                    """
+                    // There is no path from 3 to 2.
+                    let! g = makeDirectedGraph g_data
+                    let sourceVertex = VertexId 3
+                    return! Algorithms.nonNegativeWeightedSearch g sourceVertex
+                }
+                |> returnOrFail
+
+            // No route to anywhere from source 3 and 3 does not route to itself.
+            shortestPaths.ShortestPathDistances.[3].IsSome |> should be True
+            shortestPaths.ShortestPathDistances.[3].Value |> should equal (Distance 0u)
+            shortestPaths.ShortestPathTree.[3].IsNone |> should be True 
 
         testCase "Kruskal MST returns failure on a directed graph as it requres an undirected graph" <| fun _ ->
             trial {

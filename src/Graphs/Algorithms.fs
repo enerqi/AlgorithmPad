@@ -418,7 +418,7 @@ module Algorithms =
         let pathTree = Array.create capacity None // parent vertices in shortest path tree for all vertexIds
 
         // The source is zero distance away, whilst all other vertices are considered infinite distance to begin with
-        distances.[1] <- Some(Distance 0u)
+        distances.[source.Id] <- Some(Distance 0u)
 
         // Use the distance values as the priority queue keys with min distance being highest priority
         let infiniteDistance = System.UInt32.MaxValue
